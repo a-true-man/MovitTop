@@ -1,0 +1,63 @@
+<resources>
+    <string name="app_name">Movitop</string>
+
+    <!-- MOTIS foreground service -->
+    <string name="motis_channel_name">Navigation Engine</string>
+    <string name="motis_channel_description">Keeps the offline routing engine running</string>
+    <string name="motis_engine_starting">Starting navigation engine\u2026</string>
+    <string name="motis_engine_ready">Navigation Engine is Ready</string>
+    <string name="motis_engine_stopped">Navigation engine stopped</string>
+
+    <!-- Chat home screen -->
+    <string name="chat_input_hint">Type a destination\u2026</string>
+    <string name="chat_send">Send</string>
+    <string name="chip_home">Home</string>
+    <string name="chip_work">Work</string>
+    <string name="chip_kollel">Kollel</string>
+    <string name="chip_favorites">Favorites</string>
+    <string name="chat_no_gps_reply">I have no GPS signal right now 📡, where are we starting from?</string>
+
+    <string-array name="chat_greetings">
+        <item>לאן נטייל היום?</item>
+        <item>מה היעד?</item>
+        <item>לאן ניסע?</item>
+        <item>איפה נתחיל את המסע?</item>
+    </string-array>
+
+    <!-- Conversation prompts -->
+    <string name="chat_ask_destination">Where would you like to go?</string>
+    <string name="chat_ask_origin">Where are we starting from?</string>
+    <string name="chat_calculating">Calculating routes from %1$s to %2$s\u2026</string>
+    <string name="chat_results_found">I found %1$d travel options 👇</string>
+
+    <!-- Results bottom sheet -->
+    <string name="results_title">Travel options</string>
+    <string name="mode_transit">Public transit</string>
+    <string name="mode_driver">Driver</string>
+    <string name="mode_bike">Bike</string>
+    <string name="mode_walking">Walking</string>
+    <string name="mode_taxi">Taxi</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="duration_hours">%1$s hours</string>
+
+    <!-- Route detail steps -->
+    <string name="route_details_title">Route details</string>
+    <string name="rd_depart">Depart from %1$s</string>
+    <string name="rd_arrive">Arrive at %1$s</string>
+    <string name="rd_walk_to_stop">Walk to the bus stop (5 min)</string>
+    <string name="rd_bus_line">Line 480 toward Jerusalem</string>
+    <string name="rd_bus_operator">Egged · Central Station</string>
+    <string name="rd_get_off">Get off at the Central Station</string>
+    <string name="rd_walk_to_dest">Walk to your destination (4 min)</string>
+    <string name="rd_drive">Drive via Route 1</string>
+    <string name="rd_taxi">Taxi ordered — on the way</string>
+    <string name="rd_bike">Ride along the bike path</string>
+    <string name="rd_walk_full">Direct walking route</string>
+
+    <!-- Offline map -->
+    <string name="map_missing_log">Offline map not found at %1$s — showing empty map.</string>
+
+    <!-- Network / errors -->
+    <string name="chat_error_network">Oops, my satellite link dropped 🛰️. Is the routing engine running?</string>
+    <string name="chat_no_routes">I couldn\'t find any route for that. Try another destination?</string>
+</resources>

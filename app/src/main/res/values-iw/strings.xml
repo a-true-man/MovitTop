@@ -1,0 +1,61 @@
+<resources>
+    <!-- MOTIS foreground service (Hebrew) -->
+    <string name="motis_channel_name">מנוע הניווט</string>
+    <string name="motis_channel_description">משאיר את מנוע הניתוב הלא-מקוון פעיל</string>
+    <string name="motis_engine_starting">מפעיל את מנוע הניווט\u2026</string>
+    <string name="motis_engine_ready">מנוע הניווט מוכן</string>
+    <string name="motis_engine_stopped">מנוע הניווט הופסק</string>
+
+    <!-- Chat home screen (Hebrew) -->
+    <string name="chat_input_hint">הקלידו יעד\u2026</string>
+    <string name="chat_send">שליחה</string>
+    <string name="chip_home">בית</string>
+    <string name="chip_work">עבודה</string>
+    <string name="chip_kollel">כולל</string>
+    <string name="chip_favorites">מועדפים</string>
+    <string name="chat_no_gps_reply">אין לי קליטת GPS כרגע 📡, מאיפה אנחנו יוצאים?</string>
+
+    <string-array name="chat_greetings">
+        <item>לאן נטייל היום?</item>
+        <item>מה היעד?</item>
+        <item>לאן ניסע?</item>
+        <item>איפה נתחיל את המסע?</item>
+    </string-array>
+
+    <!-- Conversation prompts (Hebrew) -->
+    <string name="chat_ask_destination">לאן תרצו להגיע?</string>
+    <string name="chat_ask_origin">מאיפה אנחנו יוצאים?</string>
+    <string name="chat_calculating">מחשב מסלולים מ%1$s אל %2$s\u2026</string>
+    <string name="chat_results_found">מצאתי %1$d אפשרויות נסיעה 👇</string>
+
+    <!-- Results bottom sheet (Hebrew) -->
+    <string name="results_title">אפשרויות נסיעה</string>
+    <string name="mode_transit">תחבורה ציבורית</string>
+    <string name="mode_driver">נהג</string>
+    <string name="mode_bike">אופניים</string>
+    <string name="mode_walking">הליכה</string>
+    <string name="mode_taxi">מונית</string>
+    <string name="duration_minutes">%1$d דק׳</string>
+    <string name="duration_hours">%1$s שעות</string>
+
+    <!-- Route detail steps (Hebrew) -->
+    <string name="route_details_title">פרטי המסלול</string>
+    <string name="rd_depart">יציאה מ%1$s</string>
+    <string name="rd_arrive">הגעה ל%1$s</string>
+    <string name="rd_walk_to_stop">הליכה לתחנת האוטובוס (5 דק׳)</string>
+    <string name="rd_bus_line">קו 480 לכיוון ירושלים</string>
+    <string name="rd_bus_operator">אגד · תחנה מרכזית</string>
+    <string name="rd_get_off">ירידה בתחנה המרכזית</string>
+    <string name="rd_walk_to_dest">הליכה ליעד (4 דק׳)</string>
+    <string name="rd_drive">נהיגה בכביש 1</string>
+    <string name="rd_taxi">הוזמנה מונית — בדרך אליך</string>
+    <string name="rd_bike">רכיבה בשביל האופניים</string>
+    <string name="rd_walk_full">מסלול הליכה ישיר</string>
+
+    <!-- Offline map (Hebrew) -->
+    <string name="map_missing_log">קובץ מפה לא נמצא ב-%1$s — מוצגת מפה ריקה.</string>
+
+    <!-- Network / errors (Hebrew) -->
+    <string name="chat_error_network">אופס, נפל לי הקשר ללוויין 🛰️. האם מנוע הניתוב פועל?</string>
+    <string name="chat_no_routes">לא מצאתי מסלול ליעד הזה. אולי ננסה יעד אחר?</string>
+</resources>
