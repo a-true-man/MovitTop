@@ -8,141 +8,177 @@
     android:background="?android:attr/colorBackground"
     tools:context=".MainActivity">
 
-    <!-- Offline Mapsforge map (full-screen backdrop, behind all chat UI) -->
     <org.mapsforge.map.android.view.MapView
         android:id="@+id/mapView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:focusable="false" />
 
-    <!-- Main chat content (transparent so the map shows behind the bubbles) -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/contentRoot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@android:color/transparent">
 
-        <!-- Chat history -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/chatRecycler"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/searchCard"
             android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:clipToPadding="false"
-            android:paddingTop="12dp"
-            android:paddingBottom="8dp"
-            android:descendantFocusability="afterDescendants"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/quickChipsScroll"
-            app:layout_constraintStart_toStartOf="parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="14dp"
+            android:layout_marginTop="14dp"
+            app:cardBackgroundColor="@color/movitop_surface"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="8dp"
             app:layout_constraintEnd_toEndOf="parent"
-            tools:listitem="@layout/item_chat_message" />
-
-        <!-- Quick-location chips -->
-        <HorizontalScrollView
-            android:id="@+id/quickChipsScroll"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:scrollbars="none"
-            android:paddingHorizontal="12dp"
-            android:paddingVertical="6dp"
-            app:layout_constraintBottom_toTopOf="@id/inputBar"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
+            app:layout_constraintTop_toTopOf="parent"
+            app:strokeColor="@color/movitop_input_stroke"
+            app:strokeWidth="1dp">
 
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/quickChips"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:id="@+id/searchForm"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:singleLine="true"
-                app:chipSpacingHorizontal="8dp">
+                android:orientation="vertical"
+                android:paddingHorizontal="14dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp">
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipHome"
-                    style="@style/Widget.Movitop.Chip"
+                <!-- Origin row -->
+                <LinearLayout
+                    android:id="@+id/originRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_search_field"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="52dp"
+                    android:nextFocusDown="@id/destinationRow"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="10dp">
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/ic_origin_dot" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/search_origin_hint"
+                            android:textColor="@color/movitop_text_secondary"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/originText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:hint="@string/search_tap_to_choose"
+                            android:maxLines="1"
+                            android:textColor="@color/movitop_text_primary"
+                            android:textColorHint="@color/movitop_text_secondary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- Destination row -->
+                <LinearLayout
+                    android:id="@+id/destinationRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_search_field"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="52dp"
+                    android:nextFocusDown="@id/searchButton"
+                    android:nextFocusUp="@id/originRow"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="10dp">
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/ic_destination_dot" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/search_destination_hint"
+                            android:textColor="@color/movitop_text_secondary"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/destinationText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:hint="@string/search_tap_to_choose"
+                            android:maxLines="1"
+                            android:textColor="@color/movitop_text_primary"
+                            android:textColorHint="@color/movitop_text_secondary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/searchButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="12dp"
+                    android:focusable="true"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:nextFocusUp="@id/destinationRow"
+                    android:text="@string/search_button"
+                    android:textSize="16sp"
+                    app:backgroundTint="@color/movitop_primary"
+                    app:cornerRadius="14dp"
+                    app:icon="@drawable/ic_search"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp"
+                    app:iconTint="@color/movitop_on_primary" />
+
+                <ProgressBar
+                    android:id="@+id/searchProgress"
+                    style="?android:attr/progressBarStyleSmall"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/chip_home" />
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:indeterminateTint="@color/movitop_primary"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipWork"
-                    style="@style/Widget.Movitop.Chip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/chip_work" />
+            </LinearLayout>
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipKollel"
-                    style="@style/Widget.Movitop.Chip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/chip_kollel" />
-
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipFavorites"
-                    style="@style/Widget.Movitop.Chip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/chip_favorites" />
-            </com.google.android.material.chip.ChipGroup>
-        </HorizontalScrollView>
-
-        <!-- Input bar -->
-        <LinearLayout
-            android:id="@+id/inputBar"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@color/movitop_surface"
-            android:paddingHorizontal="12dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="12dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <EditText
-                android:id="@+id/messageInput"
-                android:layout_width="0dp"
-                android:layout_height="52dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_input_field"
-                android:paddingHorizontal="20dp"
-                android:gravity="center_vertical"
-                android:hint="@string/chat_input_hint"
-                android:textColorHint="@color/movitop_text_secondary"
-                android:textColor="@color/movitop_text_primary"
-                android:textSize="16sp"
-                android:inputType="text"
-                android:imeOptions="actionSend"
-                android:maxLines="1"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:importantForAutofill="no"
-                android:autofillHints=""
-                android:nextFocusRight="@id/sendButton" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/sendButton"
-                style="@style/Widget.Material3.Button.IconButton.Filled"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:layout_marginStart="8dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:contentDescription="@string/chat_send"
-                app:icon="@drawable/ic_send"
-                app:iconSize="22dp"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp"
-                app:cornerRadius="26dp"
-                android:focusable="true"
-                android:nextFocusLeft="@id/messageInput" />
-        </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- Results bottom sheet (progressive disclosure) -->
     <include layout="@layout/layout_bottom_sheet_results" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

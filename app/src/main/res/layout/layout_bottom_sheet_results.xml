@@ -9,8 +9,11 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/bg_bottom_sheet"
+    android:descendantFocusability="afterDescendants"
     android:elevation="12dp"
-    android:maxHeight="380dp"
+    android:focusable="true"
+    android:focusableInTouchMode="false"
+    android:maxHeight="420dp"
     app:behavior_hideable="true"
     app:behavior_peekHeight="0dp"
     app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
@@ -41,17 +44,21 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="16dp"
-                android:paddingBottom="6dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="8dp"
                 android:text="@string/results_title"
                 android:textColor="@color/movitop_text_primary"
-                android:textSize="17sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/resultsRecycler"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:descendantFocusability="afterDescendants"
                 android:nestedScrollingEnabled="false"
+                android:paddingBottom="8dp"
                 tools:listitem="@layout/item_route_option" />
         </LinearLayout>
 
@@ -95,6 +102,7 @@
                 android:id="@+id/detailsRecycler"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:descendantFocusability="afterDescendants"
                 android:nestedScrollingEnabled="false"
                 tools:listitem="@layout/item_route_step" />
         </LinearLayout>

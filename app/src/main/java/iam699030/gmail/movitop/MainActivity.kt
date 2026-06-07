@@ -1,14 +1,16 @@
 package iam699030.gmail.movitop
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.KeyEvent
 import android.view.View
-import android.view.inputmethod.EditorInfo
-import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -22,13 +24,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.chip.Chip
-import iam699030.gmail.movitop.chat.ChatAdapter
-import iam699030.gmail.movitop.chat.ChatViewModel
-import iam699030.gmail.movitop.chat.ChatViewModel.ConversationState
+import com.google.android.material.snackbar.Snackbar
+import iam699030.gmail.movitop.MainViewModel.RoutingState
 import iam699030.gmail.movitop.data.GeoPoint
 import iam699030.gmail.movitop.data.RouteAdapter
 import iam699030.gmail.movitop.data.RouteStepAdapter
+import iam699030.gmail.movitop.map.MapThemeHelper
+import iam699030.gmail.movitop.search.SearchLocationActivity
 import kotlinx.coroutines.launch
 import org.mapsforge.core.graphics.Style
 import org.mapsforge.core.model.LatLong
@@ -38,17 +40,19 @@ import org.mapsforge.map.android.view.MapView
 import org.mapsforge.map.layer.overlay.Polyline
 import org.mapsforge.map.layer.renderer.TileRendererLayer
 import org.mapsforge.map.reader.MapFile
-import org.mapsforge.map.rendertheme.InternalRenderTheme
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
-    private val viewModel: ChatViewModel by viewModels()
+    private val viewModel: MainViewModel by viewModels()
 
     private lateinit var mapView: MapView
-    private lateinit var chatRecycler: RecyclerView
-    private lateinit var messageInput: EditText
-    private lateinit var sendButton: MaterialButton
+    private lateinit var originRow: LinearLayout
+    private lateinit var destinationRow: LinearLayout
+    private lateinit var originText: TextView
+    private lateinit var destinationText: TextView
+    private lateinit var searchButton: MaterialButton
+    private lateinit var searchProgress: ProgressBar
     private lateinit var resultsRecycler: RecyclerView
     private lateinit var detailsRecycler: RecyclerView
     private lateinit var summaryContainer: LinearLayout
@@ -56,15 +60,35 @@ class MainActivity : AppCompatActivity() {
     private lateinit var detailsDuration: TextView
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
 
-    private val chatAdapter = ChatAdapter()
     private val routeAdapter = RouteAdapter { option -> viewModel.selectRoute(option) }
     private val stepAdapter = RouteStepAdapter()
 
     private var routeOverlay: Polyline? = null
 
+    private val searchLocationLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val data = result.data ?: return@registerForActivityResult
+        val name = data.getStringExtra(SearchLocationActivity.EXTRA_PLACE_NAME).orEmpty()
+        if (name.isEmpty()) return@registerForActivityResult
+
+        when (pendingSearchField) {
+            SearchLocationActivity.FIELD_ORIGIN -> {
+                viewModel.setOrigin(name)
+                originText.text = name
+            }
+            SearchLocationActivity.FIELD_DESTINATION -> {
+                viewModel.setDestination(name)
+                destinationText.text = name
+            }
+        }
+    }
+
+    private var pendingSearchField: String = SearchLocationActivity.FIELD_ORIGIN
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Must be ready before the MapView is inflated.
         AndroidGraphicFactory.createInstance(application)
 
         enableEdgeToEdge()
@@ -76,9 +100,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         mapView = findViewById(R.id.mapView)
-        chatRecycler = findViewById(R.id.chatRecycler)
-        messageInput = findViewById(R.id.messageInput)
-        sendButton = findViewById(R.id.sendButton)
+        originRow = findViewById(R.id.originRow)
+        destinationRow = findViewById(R.id.destinationRow)
+        originText = findViewById(R.id.originText)
+        destinationText = findViewById(R.id.destinationText)
+        searchButton = findViewById(R.id.searchButton)
+        searchProgress = findViewById(R.id.searchProgress)
         resultsRecycler = findViewById(R.id.resultsRecycler)
         detailsRecycler = findViewById(R.id.detailsRecycler)
         summaryContainer = findViewById(R.id.summaryContainer)
@@ -86,17 +113,12 @@ class MainActivity : AppCompatActivity() {
         detailsDuration = findViewById(R.id.detailsDuration)
 
         setupMap()
-        setupChatList()
         setupResultsSheet()
-        setupInput()
-        setupQuickChips()
+        setupSearchForm()
         observeViewModel()
 
-        // Boot the on-device MOTIS child process (foreground service).
         MotisForegroundService.start(this)
     }
-
-    // --- Mapsforge offline map ------------------------------------------------
 
     private fun setupMap() {
         mapView.mapScaleBar.isVisible = false
@@ -105,7 +127,7 @@ class MainActivity : AppCompatActivity() {
 
         val tileCache = AndroidUtil.createTileCache(
             this,
-            "movitop_tiles",
+            "movitop_tiles_v2",
             mapView.model.displayModel.tileSize,
             1f,
             mapView.model.frameBufferModel.overdrawFactor
@@ -120,14 +142,12 @@ class MainActivity : AppCompatActivity() {
                 mapView.model.mapViewPosition,
                 AndroidGraphicFactory.INSTANCE
             )
-            rendererLayer.setXmlRenderTheme(InternalRenderTheme.DEFAULT)
+            rendererLayer.setXmlRenderTheme(MapThemeHelper.load(this))
             mapView.layerManager.layers.add(rendererLayer)
         } else {
-            // Graceful fallback: no crash, just an empty map until the .map is pushed.
             Log.w(TAG, getString(R.string.map_missing_log, mapFile.absolutePath))
         }
 
-        // Center on Israel regardless, so the empty/loaded map has a valid position.
         mapView.model.mapViewPosition.center = LatLong(31.9, 35.0)
         mapView.model.mapViewPosition.zoomLevel = 8.toByte()
     }
@@ -146,7 +166,6 @@ class MainActivity : AppCompatActivity() {
         mapView.layerManager.layers.add(polyline)
         routeOverlay = polyline
 
-        // Frame the route start.
         mapView.model.mapViewPosition.center = LatLong(points.first().lat, points.first().lon)
         mapView.model.mapViewPosition.zoomLevel = 10.toByte()
     }
@@ -154,13 +173,6 @@ class MainActivity : AppCompatActivity() {
     private fun clearPolyline() {
         routeOverlay?.let { mapView.layerManager.layers.remove(it) }
         routeOverlay = null
-    }
-
-    // --- Lists + bottom sheet -------------------------------------------------
-
-    private fun setupChatList() {
-        chatRecycler.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
-        chatRecycler.adapter = chatAdapter
     }
 
     private fun setupResultsSheet() {
@@ -178,13 +190,16 @@ class MainActivity : AppCompatActivity() {
         bottomSheetBehavior.addBottomSheetCallback(object :
             BottomSheetBehavior.BottomSheetCallback() {
             override fun onStateChanged(bottomSheet: View, newState: Int) {
-                if (newState == BottomSheetBehavior.STATE_EXPANDED) {
-                    val target = if (detailsContainer.visibility == View.VISIBLE) {
-                        detailsRecycler
-                    } else {
-                        resultsRecycler
+                when (newState) {
+                    BottomSheetBehavior.STATE_EXPANDED -> {
+                        val target = if (detailsContainer.visibility == View.VISIBLE) {
+                            detailsRecycler
+                        } else {
+                            resultsRecycler
+                        }
+                        focusFirstChild(target)
                     }
-                    focusFirstChild(target)
+                    BottomSheetBehavior.STATE_HIDDEN -> updateFocusChain()
                 }
             }
 
@@ -194,13 +209,10 @@ class MainActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 when {
-                    // Details -> back to the 5-option summary (and clear the polyline).
-                    viewModel.state.value is ConversationState.ViewingRouteDetails ->
+                    viewModel.uiState.value.routingState is RoutingState.ViewingRouteDetails ->
                         viewModel.backToSummary()
-                    // Summary visible -> collapse the sheet to reveal the full map.
                     bottomSheetBehavior.state != BottomSheetBehavior.STATE_HIDDEN ->
                         bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
-                    // Nothing open -> default behavior (leave the screen).
                     else -> {
                         isEnabled = false
                         onBackPressedDispatcher.onBackPressed()
@@ -210,45 +222,95 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun setupInput() {
-        sendButton.setOnClickListener { sendCurrentInput() }
-        messageInput.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_SEND) {
-                sendCurrentInput()
+    private fun setupSearchForm() {
+        originRow.setOnClickListener { openSearch(SearchLocationActivity.FIELD_ORIGIN) }
+        destinationRow.setOnClickListener { openSearch(SearchLocationActivity.FIELD_DESTINATION) }
+
+        originRow.setOnKeyListener { _, keyCode, event ->
+            handleRowKey(originRow, keyCode, event) {
+                openSearch(SearchLocationActivity.FIELD_ORIGIN)
+            }
+        }
+        destinationRow.setOnKeyListener { _, keyCode, event ->
+            handleRowKey(destinationRow, keyCode, event) {
+                openSearch(SearchLocationActivity.FIELD_DESTINATION)
+            }
+        }
+
+        searchButton.setOnClickListener { performSearch() }
+        searchButton.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_UP &&
+                (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
+            ) {
+                performSearch()
                 true
             } else {
                 false
             }
         }
-        messageInput.requestFocus()
+
+        originRow.requestFocus()
     }
 
-    private fun setupQuickChips() {
-        val chipIds = listOf(R.id.chipHome, R.id.chipWork, R.id.chipKollel, R.id.chipFavorites)
-        for (id in chipIds) {
-            findViewById<Chip>(id).setOnClickListener { view ->
-                viewModel.onUserInput((view as Chip).text.toString())
-            }
+    private fun handleRowKey(view: View, keyCode: Int, event: KeyEvent, onSelect: () -> Unit): Boolean {
+        if (event.action != KeyEvent.ACTION_UP) return false
+        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+            onSelect()
+            return true
         }
+        return false
     }
 
-    // --- State observation ----------------------------------------------------
+    private fun openSearch(fieldType: String) {
+        pendingSearchField = fieldType
+        val initialQuery = when (fieldType) {
+            SearchLocationActivity.FIELD_DESTINATION -> viewModel.uiState.value.destinationQuery
+            else -> viewModel.uiState.value.originQuery
+        }
+        val intent = Intent(this, SearchLocationActivity::class.java).apply {
+            putExtra(SearchLocationActivity.EXTRA_FIELD_TYPE, fieldType)
+            putExtra(SearchLocationActivity.EXTRA_INITIAL_QUERY, initialQuery)
+        }
+        searchLocationLauncher.launch(intent)
+    }
+
+    private fun performSearch() {
+        val origin = viewModel.uiState.value.originQuery.trim()
+        val destination = viewModel.uiState.value.destinationQuery.trim()
+        if (origin.isEmpty() || destination.isEmpty()) return
+        viewModel.search()
+    }
 
     private fun observeViewModel() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.messages.collect { messages ->
-                        chatAdapter.submitList(messages) {
-                            if (messages.isNotEmpty()) {
-                                chatRecycler.smoothScrollToPosition(messages.size - 1)
-                            }
+                    viewModel.uiState.collect { state ->
+                        if (originText.text.toString() != state.originQuery) {
+                            originText.text = state.originQuery
+                        }
+                        if (destinationText.text.toString() != state.destinationQuery) {
+                            destinationText.text = state.destinationQuery
+                        }
+                        searchProgress.visibility =
+                            if (state.routingState == RoutingState.Calculating) View.VISIBLE
+                            else View.GONE
+                        searchButton.isEnabled = state.routingState != RoutingState.Calculating
+                        renderRoutingState(state.routingState)
+                        state.errorMessage?.let { message ->
+                            Snackbar.make(findViewById(R.id.main), message, Snackbar.LENGTH_LONG)
+                                .show()
+                            viewModel.clearError()
                         }
                     }
                 }
                 launch {
                     viewModel.routes.collect { routes ->
-                        routeAdapter.submitList(routes.orEmpty())
+                        routeAdapter.submitList(routes.orEmpty()) {
+                            if (routes != null && summaryContainer.visibility == View.VISIBLE) {
+                                updateFocusChain()
+                            }
+                        }
                     }
                 }
                 launch {
@@ -256,33 +318,34 @@ class MainActivity : AppCompatActivity() {
                         stepAdapter.submitList(detail?.steps.orEmpty()) {
                             if (detail != null && detailsContainer.visibility == View.VISIBLE) {
                                 focusFirstChild(detailsRecycler)
+                                updateFocusChain()
                             }
                         }
                         if (detail != null) drawPolyline(detail.polyline) else clearPolyline()
                     }
                 }
-                launch {
-                    viewModel.state.collect { state -> renderState(state) }
-                }
             }
         }
     }
 
-    private fun renderState(state: ConversationState) {
+    private fun renderRoutingState(state: RoutingState) {
         when (state) {
-            ConversationState.ResultsReady -> {
+            RoutingState.ResultsReady -> {
                 showSummaryPane()
                 bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
                 focusFirstChild(resultsRecycler)
+                updateFocusChain()
             }
-            is ConversationState.ViewingRouteDetails -> {
+            is RoutingState.ViewingRouteDetails -> {
                 showDetailsPane()
                 detailsDuration.text = formatDuration(state.selectedRoute.durationMinutes)
-                // Polyline + step focus are handled when routeDetail loads (async).
                 bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
             }
             else -> {
-                bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+                if (state !is RoutingState.Calculating) {
+                    bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+                }
+                updateFocusChain()
             }
         }
     }
@@ -297,19 +360,37 @@ class MainActivity : AppCompatActivity() {
         detailsContainer.visibility = View.VISIBLE
     }
 
-    private fun sendCurrentInput() {
-        val text = messageInput.text?.toString()?.trim().orEmpty()
-        if (text.isEmpty()) return
-        messageInput.text?.clear()
-        viewModel.onUserInput(text)
+    private fun updateFocusChain() {
+        val sheetExpanded = bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED
+        val activeRecycler = if (detailsContainer.visibility == View.VISIBLE) {
+            detailsRecycler
+        } else {
+            resultsRecycler
+        }
+
+        if (sheetExpanded) {
+            activeRecycler.post {
+                val firstItem = activeRecycler.findViewHolderForAdapterPosition(0)?.itemView
+                    ?: activeRecycler.layoutManager?.findViewByPosition(0)
+                if (firstItem != null) {
+                    searchButton.nextFocusDownId = firstItem.id
+                    firstItem.nextFocusUpId = searchButton.id
+                } else {
+                    searchButton.nextFocusDownId = R.id.resultsBottomSheet
+                    findViewById<View>(R.id.resultsBottomSheet).nextFocusUpId = searchButton.id
+                }
+            }
+        } else {
+            searchButton.nextFocusDownId = View.NO_ID
+        }
     }
 
-    /** D-Pad: move focus to the first row of the given list once it is shown. */
     private fun focusFirstChild(recycler: RecyclerView) {
         recycler.post {
             val firstItem = recycler.findViewHolderForAdapterPosition(0)?.itemView
                 ?: recycler.layoutManager?.findViewByPosition(0)
             firstItem?.requestFocus()
+            updateFocusChain()
         }
     }
 
@@ -322,8 +403,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             getString(R.string.duration_minutes, minutes)
         }
-
-    // --- Lifecycle ------------------------------------------------------------
 
     override fun onDestroy() {
         clearPolyline()

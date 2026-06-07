@@ -4,11 +4,22 @@
         <item name="colorPrimary">@color/movitop_primary</item>
         <item name="colorPrimaryDark">@color/movitop_primary_dark</item>
         <item name="colorOnPrimary">@color/movitop_on_primary</item>
+        <item name="colorSecondary">@color/movitop_accent</item>
         <item name="android:colorBackground">@color/movitop_background</item>
         <item name="colorSurface">@color/movitop_surface</item>
         <item name="colorOnSurface">@color/movitop_text_primary</item>
+        <item name="colorSurfaceVariant">@color/movitop_input_bg</item>
+        <item name="colorOutline">@color/movitop_input_stroke</item>
         <item name="android:statusBarColor">@color/movitop_background</item>
         <item name="android:windowLightStatusBar">true</item>
+        <item name="materialCardViewStyle">@style/Widget.Movitop.Card</item>
+    </style>
+
+    <style name="Widget.Movitop.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeColor">@color/movitop_input_stroke</item>
+        <item name="strokeWidth">1dp</item>
     </style>
 
     <style name="Theme.Movitop" parent="Base.Theme.Movitop" />

@@ -4,12 +4,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="12dp"
-    android:layout_marginVertical="5dp"
+    android:layout_marginHorizontal="4dp"
+    android:layout_marginVertical="4dp"
     android:focusable="true"
     android:focusableInTouchMode="false"
     app:cardBackgroundColor="@color/movitop_surface"
-    app:cardCornerRadius="16dp"
+    app:cardCornerRadius="14dp"
     app:cardElevation="0dp"
     app:strokeColor="@color/movitop_input_stroke"
     app:strokeWidth="1dp">
@@ -18,19 +18,17 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
-        android:minHeight="68dp"
+        android:minHeight="60dp"
         android:orientation="horizontal"
         android:paddingHorizontal="16dp"
-        android:paddingVertical="14dp">
+        android:paddingVertical="12dp">
 
         <ImageView
-            android:id="@+id/modeIcon"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="@drawable/bg_mode_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
             android:importantForAccessibility="no"
-            android:padding="6dp"
-            tools:src="@drawable/ic_mode_transit" />
+            android:src="@drawable/ic_place_pin"
+            app:tint="@color/movitop_primary" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -40,34 +38,28 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/modeLabel"
-                android:layout_width="wrap_content"
+                android:id="@+id/placeName"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:textColor="@color/movitop_text_primary"
-                android:textSize="16sp"
+                android:textSize="17sp"
                 android:textStyle="bold"
-                tools:text="תחבורה ציבורית" />
+                tools:text="ירושלים" />
 
             <TextView
-                android:id="@+id/modeDuration"
-                android:layout_width="wrap_content"
+                android:id="@+id/placeSubtitle"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:textColor="@color/movitop_text_secondary"
                 android:textSize="13sp"
-                tools:text="45 דק׳" />
+                tools:text="מחוז ירושלים · ישראל" />
 
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/modePrice"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:textColor="@color/movitop_primary"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            tools:text="30₪" />
 
     </LinearLayout>
 

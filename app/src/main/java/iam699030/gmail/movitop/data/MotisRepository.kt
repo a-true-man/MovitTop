@@ -49,8 +49,8 @@ data class RouteDetail(
 )
 
 interface MotisRepository {
-    /** Resolves a free-text place query to candidate names/addresses. */
-    suspend fun geocode(query: String): List<String>
+    /** Resolves a free-text place query to rich autocomplete candidates. */
+    suspend fun geocodePlaces(query: String): List<GeocodePlace>
 
     /** Returns ranked route summaries between two places. */
     suspend fun getRoutes(origin: String, dest: String): List<RouteOption>
@@ -65,9 +65,13 @@ interface MotisRepository {
  */
 class MockMotisRepository : MotisRepository {
 
-    override suspend fun geocode(query: String): List<String> {
-        delay(300L)
-        return listOf(query)
+    override suspend fun geocodePlaces(query: String): List<GeocodePlace> {
+        delay(200L)
+        return PlaceSuggestions.localMatches(query).map { name ->
+            GeocodePlace(name = name, subtitle = "ישראל", lat = 0.0, lon = 0.0)
+        }.ifEmpty {
+            listOf(GeocodePlace(name = query, subtitle = null, lat = 0.0, lon = 0.0))
+        }
     }
 
     override suspend fun getRoutes(origin: String, dest: String): List<RouteOption> {

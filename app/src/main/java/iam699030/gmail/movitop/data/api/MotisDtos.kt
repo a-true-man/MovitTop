@@ -11,7 +11,11 @@ data class GeocodeDto(
     val lat: Double = 0.0,
     val lon: Double = 0.0,
     val id: String? = null,
-    val type: String? = null
+    val type: String? = null,
+    val street: String? = null,
+    val city: String? = null,
+    val state: String? = null,
+    val country: String? = null
 )
 
 /** `GET /api/v1/plan` response. */

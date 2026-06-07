@@ -1,7 +1,7 @@
 package iam699030.gmail.movitop.data
 
-import iam699030.gmail.movitop.data.api.GeocodeDto
 import iam699030.gmail.movitop.data.api.ItineraryDto
+import iam699030.gmail.movitop.data.toGeocodePlace
 import iam699030.gmail.movitop.data.api.LegDto
 import iam699030.gmail.movitop.data.api.MotisApi
 import iam699030.gmail.movitop.data.api.PolylineDecoder
@@ -9,8 +9,10 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.time.Instant
-import java.time.temporal.ChronoUnit
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
@@ -23,7 +25,7 @@ class RealMotisRepository(
     baseUrl: String = "http://10.0.2.2:8080/"
 ) : MotisRepository {
 
-    private val api: MotisApi = Retrofit.Builder()
+    private val retrofit: Retrofit = Retrofit.Builder()
         .baseUrl(baseUrl)
         .client(
             OkHttpClient.Builder()
@@ -38,14 +40,30 @@ class RealMotisRepository(
         )
         .addConverterFactory(GsonConverterFactory.create())
         .build()
-        .create(MotisApi::class.java)
 
-    override suspend fun geocode(query: String): List<String> =
-        api.geocode(query).mapNotNull { it.name }
+    private val api: MotisApi = retrofit.create(MotisApi::class.java)
+    private val geocoder = PlaceGeocoder(api)
+
+    override suspend fun geocodePlaces(query: String): List<GeocodePlace> {
+        val trimmed = query.trim()
+        if (trimmed.length < 2) return emptyList()
+
+        val local = PlaceSuggestions.localMatches(trimmed).map { name ->
+            GeocodePlace(name = name, subtitle = "ישראל", lat = 0.0, lon = 0.0)
+        }
+        val remote = try {
+            api.geocode(trimmed).mapNotNull { it.toGeocodePlace() }
+        } catch (_: Exception) {
+            emptyList()
+        }
+        return (remote + local)
+            .distinctBy { it.displayKey }
+            .take(12)
+    }
 
     override suspend fun getRoutes(origin: String, dest: String): List<RouteOption> {
-        val from = resolvePlace(origin)
-        val to = resolvePlace(dest)
+        val from = geocoder.resolve(origin, context = dest)
+        val to = geocoder.resolve(dest, context = origin)
         val plan = api.plan(
             fromPlace = from,
             toPlace = to,
@@ -81,8 +99,8 @@ class RealMotisRepository(
         dest: String,
         mode: TransportMode
     ): RouteDetail {
-        val from = resolvePlace(origin)
-        val to = resolvePlace(dest)
+        val from = geocoder.resolve(origin, context = dest)
+        val to = geocoder.resolve(dest, context = origin)
         val transit = if (mode == TransportMode.TRANSIT) "TRANSIT" else ""
         val direct = when (mode) {
             TransportMode.WALKING -> "WALK"
@@ -110,13 +128,6 @@ class RealMotisRepository(
     }
 
     // --- helpers --------------------------------------------------------------
-
-    /** Geocodes a free-text place and returns "lat,lon" for the plan endpoint. */
-    private suspend fun resolvePlace(place: String): String {
-        val hit: GeocodeDto = api.geocode(place).firstOrNull()
-            ?: throw IllegalStateException("No geocode result for \"$place\"")
-        return "${hit.lat},${hit.lon}"
-    }
 
     private fun minutesOf(itinerary: ItineraryDto): Int {
         val seconds = itinerary.duration
@@ -159,6 +170,9 @@ class RealMotisRepository(
         return "≈$low-$high₪"
     }
 
-    private fun nowIso(): String =
-        Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
+    private fun nowIso(): String {
+        val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+        fmt.timeZone = TimeZone.getTimeZone("UTC")
+        return fmt.format(Date())
+    }
 }

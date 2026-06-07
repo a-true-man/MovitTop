@@ -1,5 +1,6 @@
 package iam699030.gmail.movitop.data
 
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -36,6 +37,16 @@ class RouteAdapter(
         holder.label.text = context.getString(option.mode.labelRes)
         holder.duration.text = formatDuration(holder, option.durationMinutes)
         holder.itemView.setOnClickListener { onRouteSelected(option) }
+        holder.itemView.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_UP &&
+                (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
+            ) {
+                onRouteSelected(option)
+                true
+            } else {
+                false
+            }
+        }
 
         if (option.priceText.isNullOrEmpty()) {
             holder.price.visibility = View.GONE
