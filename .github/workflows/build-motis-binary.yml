@@ -64,6 +64,7 @@ jobs:
         working-directory: motis
         run: cmake --preset linux-arm64-release
 
+      # Compile only — no strip/size-reduction (musl strip is unavailable in CI).
       - name: Build motis executable
         working-directory: motis
         run: |
@@ -71,14 +72,7 @@ jobs:
           JOBS="$(nproc 2>/dev/null || echo 4)"
           cmake --build --preset linux-arm64-release --target motis -j "${JOBS}"
           test -f build/arm64-release/motis
-
-      - name: Package motis-server
-        working-directory: motis
-        run: |
-          set -euo pipefail
-          BIN="build/arm64-release/motis"
-          test -f "${BIN}"
-          cp "${BIN}" motis-server
+          cp build/arm64-release/motis motis-server
           chmod +x motis-server
           file motis-server
           ls -lh motis-server

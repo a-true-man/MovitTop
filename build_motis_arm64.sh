@@ -17,7 +17,6 @@ MOTIS_DIR="${SCRIPT_DIR}/movitop_data/motis"
 ASSETS_DIR="${SCRIPT_DIR}/app/src/main/assets"
 OUTPUT="${ASSETS_DIR}/motis-server"
 BUILD_IMAGE="${MOTIS_BUILD_IMAGE:-ghcr.io/motis-project/docker-cpp-build:latest}"
-STRIP="/opt/aarch64-unknown-linux-musl/bin/strip"
 BUILD_DIR="build/arm64-release"
 BINARY="${BUILD_DIR}/motis"
 
@@ -125,9 +124,6 @@ docker run --rm \
       echo 'ERROR: expected binary not found at ${BINARY}' >&2
       exit 1
     fi
-
-    echo '[container] stripping debug symbols...'
-    '${STRIP}' '${BINARY}'
 
     cp '${BINARY}' /output/motis-server
     chmod +x /output/motis-server
