@@ -30,6 +30,7 @@ jobs:
 
       - name: Fetch dependencies (pkg)
         working-directory: motis
+        shell: bash
         run: |
           set -euo pipefail
           git config --global --add safe.directory "$(pwd)"
@@ -62,6 +63,7 @@ jobs:
 
       - name: Configure (linux-arm64-release)
         working-directory: motis
+        shell: bash
         run: cmake --preset linux-arm64-release
 
       # Compile only — no strip/size-reduction (musl strip is unavailable in CI).
