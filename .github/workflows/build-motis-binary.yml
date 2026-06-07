@@ -18,7 +18,7 @@ jobs:
     # Official MOTIS cross-build image (ARM64 musl toolchain + pkg + cmake/ninja).
     # Equivalent to MOTIS CI; more reliable than dockcross for this project.
     container:
-      image: ghcr.io/motis-project/docker-cpp-build
+      image: ghcr.io/motis-project/docker-cpp-build:latest
 
     steps:
       - name: Checkout MOTIS
@@ -31,11 +31,34 @@ jobs:
       - name: Fetch dependencies (pkg)
         working-directory: motis
         run: |
+          set -euo pipefail
           git config --global --add safe.directory "$(pwd)"
           git config --global url."https://github.com/".insteadOf git@github.com:
           git config --global url."https://github.com/".insteadOf ssh://git@github.com/
           git config --global http.version HTTP/1.1
-          /opt/pkg -l
+          git config --global http.postBuffer 524288000
+
+          cleanup_broken() {
+            find deps -maxdepth 1 -mindepth 1 -type d 2>/dev/null | while read -r dir; do
+              if [[ -d "${dir}/.git" ]] && ! git -C "${dir}" rev-parse HEAD >/dev/null 2>&1; then
+                echo "Removing broken clone ${dir}"
+                rm -rf "${dir}"
+              fi
+            done
+          }
+
+          for attempt in 1 2 3 4 5; do
+            cleanup_broken
+            rm -f .pkg.lock
+            echo "pkg attempt ${attempt}/5..."
+            if /opt/pkg -l; then
+              exit 0
+            fi
+            echo "pkg failed — waiting 15s before retry"
+            sleep 15
+          done
+          echo "ERROR: pkg dependency fetch failed after 5 attempts" >&2
+          exit 1
 
       - name: Configure (linux-arm64-release)
         working-directory: motis
@@ -43,15 +66,18 @@ jobs:
 
       - name: Build motis executable
         working-directory: motis
-        run: cmake --build --preset linux-arm64-release --target motis -j "$(nproc)"
+        run: |
+          set -euo pipefail
+          JOBS="$(nproc 2>/dev/null || echo 4)"
+          cmake --build --preset linux-arm64-release --target motis -j "${JOBS}"
+          test -f build/arm64-release/motis
 
-      - name: Strip and rename
+      - name: Package motis-server
         working-directory: motis
         run: |
-          STRIP="/opt/aarch64-unknown-linux-musl/bin/strip"
+          set -euo pipefail
           BIN="build/arm64-release/motis"
           test -f "${BIN}"
-          "${STRIP}" "${BIN}"
           cp "${BIN}" motis-server
           chmod +x motis-server
           file motis-server
