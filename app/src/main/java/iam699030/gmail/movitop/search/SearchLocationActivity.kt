@@ -1,6 +1,8 @@
 package iam699030.gmail.movitop.search
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
@@ -8,8 +10,10 @@ import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
@@ -18,10 +22,14 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.snackbar.Snackbar
 import iam699030.gmail.movitop.R
 import iam699030.gmail.movitop.SimpleTextWatcher
 import iam699030.gmail.movitop.data.GeocodePlace
+import iam699030.gmail.movitop.nav.LocationTracker
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class SearchLocationActivity : AppCompatActivity() {
 
@@ -31,8 +39,14 @@ class SearchLocationActivity : AppCompatActivity() {
     private lateinit var resultsRecycler: RecyclerView
     private lateinit var searchProgress: ProgressBar
     private lateinit var emptyState: TextView
+    private lateinit var currentLocationRow: View
+    private lateinit var currentLocationProgress: ProgressBar
 
     private val resultAdapter = GeocodeResultAdapter { place -> returnPlace(place) }
+
+    private val requestLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) locateCurrentPosition() else showLocationUnavailable() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +66,20 @@ class SearchLocationActivity : AppCompatActivity() {
         resultsRecycler = findViewById(R.id.resultsRecycler)
         searchProgress = findViewById(R.id.searchProgress)
         emptyState = findViewById(R.id.emptyState)
+        currentLocationRow = findViewById(R.id.currentLocationRow)
+        currentLocationProgress = findViewById(R.id.currentLocationProgress)
+
+        currentLocationRow.setOnClickListener { onCurrentLocationSelected() }
+        currentLocationRow.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_UP &&
+                (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
+            ) {
+                onCurrentLocationSelected()
+                true
+            } else {
+                false
+            }
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.searchRoot)) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -97,11 +125,12 @@ class SearchLocationActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.results.collect { results ->
-                        resultAdapter.submitList(results) {
-                            if (results.isNotEmpty() && searchInput.hasFocus()) {
-                                searchInput.nextFocusDownId = R.id.resultsRecycler
-                            }
-                        }
+                        // DPAD_DOWN with results present is handled by
+                        // setupKeyHandling()'s key listener (jumps straight into
+                        // the list), so nextFocusDownId only matters when it's
+                        // empty — leave it pointed at currentLocationRow (set in
+                        // XML) so arrow-down still lands somewhere useful then.
+                        resultAdapter.submitList(results)
                         emptyState.visibility =
                             if (results.isEmpty() && searchInput.text.length >= 2) View.VISIBLE
                             else View.GONE
@@ -114,6 +143,44 @@ class SearchLocationActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun onCurrentLocationSelected() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            locateCurrentPosition()
+        } else {
+            requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    /** GPS fix only (see [LocationTracker]) — the pick is returned as-is, with no reverse-geocoded name. */
+    private fun locateCurrentPosition() {
+        currentLocationProgress.visibility = View.VISIBLE
+        lifecycleScope.launch {
+            val point = withTimeoutOrNull(10_000L) {
+                LocationTracker(this@SearchLocationActivity).updates().firstOrNull()
+            }
+            currentLocationProgress.visibility = View.GONE
+            if (point == null) {
+                showLocationUnavailable()
+                return@launch
+            }
+            returnPlace(
+                GeocodePlace(
+                    name = getString(R.string.search_use_current_location),
+                    subtitle = null,
+                    lat = point.lat,
+                    lon = point.lon,
+                    id = "current_location"
+                )
+            )
+        }
+    }
+
+    private fun showLocationUnavailable() {
+        Snackbar.make(currentLocationRow, R.string.map_location_unavailable, Snackbar.LENGTH_LONG).show()
     }
 
     private fun returnPlace(place: GeocodePlace) {
