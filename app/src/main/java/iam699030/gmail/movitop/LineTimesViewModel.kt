@@ -7,6 +7,7 @@ import iam699030.gmail.movitop.data.FavoriteLinesRepository
 import iam699030.gmail.movitop.data.LineDeparture
 import iam699030.gmail.movitop.data.LineScheduleRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +37,12 @@ class LineTimesViewModel(application: Application) : AndroidViewModel(applicatio
     )
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
+    // Each keystroke (and toggling a favorite while the query is blank) starts
+    // a new lookup; without cancelling the previous one, two in flight at once
+    // could finish out of order and leave showingFavorites/results mismatched
+    // with whatever the box actually shows.
+    private var loadJob: Job? = null
+
     init {
         loadFavoritesIfBlank()
     }
@@ -51,7 +58,8 @@ class LineTimesViewModel(application: Application) : AndroidViewModel(applicatio
             loadFavoritesIfBlank()
             return
         }
-        viewModelScope.launch {
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
             val date = _uiState.value.dateEpochMillis
             val results = withContext(Dispatchers.IO) {
                 repository.findDepartures(query.trim(), date)
@@ -68,12 +76,13 @@ class LineTimesViewModel(application: Application) : AndroidViewModel(applicatio
 
     /** With no active query, show today's departures for every saved line instead of nothing. */
     private fun loadFavoritesIfBlank() {
+        loadJob?.cancel()
         val saved = favorites.getAll()
         if (saved.isEmpty()) {
             _uiState.value = _uiState.value.copy(results = emptyList(), searched = false, showingFavorites = false)
             return
         }
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             val date = _uiState.value.dateEpochMillis
             val results = withContext(Dispatchers.IO) {
                 saved.flatMap { line -> repository.findDepartures(line, date) }
