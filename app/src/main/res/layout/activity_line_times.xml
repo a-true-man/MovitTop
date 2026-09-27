@@ -31,6 +31,7 @@
             android:hint="@string/line_times_hint"
             android:imeOptions="actionSearch"
             android:inputType="text"
+            android:nextFocusDown="@id/lineDateButton"
             android:paddingHorizontal="14dp"
             android:singleLine="true"
             android:textColor="@color/movitop_text_primary"
@@ -41,6 +42,7 @@
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_marginStart="8dp"
+            android:nextFocusUp="@id/lineQueryInput"
             android:text="@string/trip_time_now"
             android:textSize="13sp"
             app:cornerRadius="14dp" />

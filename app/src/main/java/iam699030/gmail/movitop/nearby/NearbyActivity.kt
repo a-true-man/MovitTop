@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -75,7 +76,18 @@ class NearbyActivity : AppCompatActivity() {
         recycler.layoutManager = LinearLayoutManager(this)
         recycler.adapter = adapter
         refreshButton.setOnClickListener { onCurrentLocationRequested() }
+        refreshButton.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_UP &&
+                keyCode == KeyEvent.KEYCODE_DPAD_DOWN && adapter.itemCount > 0
+            ) {
+                focusFirstDeparture()
+                true
+            } else {
+                false
+            }
+        }
 
+        refreshButton.requestFocus()
         observeViewModel()
         onCurrentLocationRequested()
     }
@@ -135,6 +147,14 @@ class NearbyActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun focusFirstDeparture() {
+        recycler.post {
+            val first = recycler.findViewHolderForAdapterPosition(0)?.itemView
+                ?: recycler.layoutManager?.findViewByPosition(0)
+            first?.requestFocus()
         }
     }
 

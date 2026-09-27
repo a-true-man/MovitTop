@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.KeyEvent
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
@@ -59,6 +60,19 @@ class LineTimesActivity : AppCompatActivity() {
         })
 
         dateButton.setOnClickListener { pickDate() }
+        // D-Pad-only devices: nextFocusDown into an empty/not-yet-laid-out
+        // RecyclerView doesn't reliably land on its first item, so jump there
+        // explicitly (same pattern as SearchLocationActivity/MainActivity).
+        dateButton.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_UP &&
+                keyCode == KeyEvent.KEYCODE_DPAD_DOWN && adapter.itemCount > 0
+            ) {
+                focusFirstDeparture()
+                true
+            } else {
+                false
+            }
+        }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -87,6 +101,15 @@ class LineTimesActivity : AppCompatActivity() {
         }
     }
 
+    private fun focusFirstDeparture() {
+        recycler.post {
+            val first = recycler.findViewHolderForAdapterPosition(0)?.itemView
+                ?: recycler.layoutManager?.findViewByPosition(0)
+            // The row itself isn't focusable — only its star button is.
+            first?.findViewById<View>(R.id.favoriteStarButton)?.requestFocus()
+        }
+    }
+
     private fun pickDate() {
         val calendar = Calendar.getInstance().apply {
             timeInMillis = viewModel.uiState.value.dateEpochMillis
@@ -95,8 +118,10 @@ class LineTimesActivity : AppCompatActivity() {
             this,
             { _, year, month, day ->
                 calendar.set(year, month, day, 0, 0, 0)
+                // setDate() already re-runs the current search/favorites load
+                // against the new date (see LineTimesViewModel) — no need to
+                // call search() again here too.
                 viewModel.setDate(calendar.timeInMillis)
-                viewModel.search(queryInput.text.toString())
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),

@@ -40,6 +40,7 @@
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:contentDescription="@string/nearby_refresh"
+            android:nextFocusDown="@id/nearbyRecycler"
             app:icon="@drawable/ic_my_location"
             app:iconGravity="textStart"
             app:iconPadding="0dp"
