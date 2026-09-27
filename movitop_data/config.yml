@@ -1,0 +1,41 @@
+# Movitop — offline MOTIS configuration
+# Modules enabled implicitly by the keys below:
+#   - routing  : timetable (GTFS) loaded
+#   - osr      : street_routing (Open Street Router over OSM)
+#   - geocoding: address/stop autocomplete + reverse geocoding
+# Real-time (rt), paxmon, tiles, gbfs and elevators are intentionally omitted
+# so those modules stay disabled for a lean, fully-offline on-device engine.
+
+server:
+  host: 0.0.0.0
+  port: 8080
+
+# OpenStreetMap base data (required by street routing + geocoding).
+osm: israel-and-palestine-latest.osm.pbf
+
+# Open Street Router (osr): pedestrian / bike / car routing on OSM.
+street_routing: true
+# Route footpaths between stops over OSM instead of GTFS transfer tables.
+osr_footpath: true
+
+# Geocoding module (forward + reverse) for the chat search box and map taps.
+geocoding: true
+reverse_geocoding: true
+
+timetable:
+  first_day: TODAY
+  num_days: 60
+  # Disable real-time vehicle visualization (extra lookup structures / RAM).
+  railviz: false
+  use_osm_stop_coordinates: true
+  # Shapes: keep the intercity/rail polylines we preserved, and reconstruct the
+  # urban ones we stripped from OSM via the street router.
+  with_shapes: true
+  route_shapes:
+    mode: missing
+  datasets:
+    il:
+      path: israel-optimized.zip
+
+logging:
+  log_level: info

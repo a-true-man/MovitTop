@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="5dp"
+    android:focusable="true"
+    android:focusableInTouchMode="false"
+    app:cardBackgroundColor="@color/movitop_surface"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/movitop_input_stroke"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:minHeight="68dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="14dp">
+
+        <ImageView
+            android:id="@+id/modeIcon"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_mode_icon"
+            android:importantForAccessibility="no"
+            android:padding="6dp"
+            tools:src="@drawable/ic_mode_transit" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/modeLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/movitop_text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="תחבורה ציבורית" />
+
+            <TextView
+                android:id="@+id/modeDuration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/movitop_text_secondary"
+                android:textSize="13sp"
+                tools:text="45 דק׳" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/modePrice"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/movitop_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="30₪" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

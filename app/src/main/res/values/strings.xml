@@ -1,0 +1,109 @@
+<resources>
+    <string name="app_name">Movitop</string>
+
+    <!-- MOTIS foreground service -->
+    <string name="motis_channel_name">Navigation Engine</string>
+    <string name="motis_channel_description">Keeps the offline routing engine running</string>
+    <string name="motis_engine_starting">Starting navigation engine\u2026</string>
+    <string name="motis_engine_ready">Navigation Engine is Ready</string>
+    <string name="motis_engine_stopped">Navigation engine stopped</string>
+
+    <!-- Origin/destination search form -->
+    <string name="search_origin_hint">Origin</string>
+    <string name="search_destination_hint">Destination</string>
+    <string name="search_button">Search route</string>
+    <string name="search_tap_to_choose">Tap to search</string>
+    <string name="search_origin_title">Choose origin</string>
+    <string name="search_destination_title">Choose destination</string>
+    <string name="search_location_hint">Search address or place\u2026</string>
+    <string name="search_no_results">No places found. Try a different name.</string>
+
+    <!-- Results bottom sheet -->
+    <string name="results_title">Travel options</string>
+    <string name="mode_transit">Public transit</string>
+    <string name="mode_driver">Driver</string>
+    <string name="mode_bike">Bike</string>
+    <string name="mode_walking">Walking</string>
+    <string name="mode_taxi">Taxi</string>
+    <string name="duration_minutes">%1$d min</string>
+    <string name="duration_hours">%1$s hours</string>
+
+    <!-- Route detail steps -->
+    <string name="route_details_title">Route details</string>
+    <string name="rd_depart">Depart from %1$s</string>
+    <string name="rd_arrive">Arrive at %1$s</string>
+    <string name="rd_walk_to_stop">Walk to the bus stop (5 min)</string>
+    <string name="rd_bus_line">Line 480 toward Jerusalem</string>
+    <string name="rd_bus_operator">Egged · Central Station</string>
+    <string name="rd_get_off">Get off at the Central Station</string>
+    <string name="rd_walk_to_dest">Walk to your destination (4 min)</string>
+    <string name="rd_drive">Drive via Route 1</string>
+    <string name="rd_taxi">Taxi ordered — on the way</string>
+    <string name="rd_bike">Ride along the bike path</string>
+    <string name="rd_walk_full">Direct walking route</string>
+
+    <!-- Offline map -->
+    <string name="map_missing_log">Offline map not found at %1$s — showing empty map.</string>
+
+    <!-- Network / errors -->
+    <string name="search_error_network">Oops, my satellite link dropped 🛰️. Is the routing engine running?</string>
+    <string name="search_error_place">I couldn\'t find %1$s on the map 🗺️. Try a more specific name, maybe with the city.</string>
+    <string name="search_no_routes">I couldn\'t find any route for that. Try another destination?</string>
+
+    <!-- Live navigation -->
+    <string name="start_navigation">Start navigation</string>
+    <string name="nav_next_button">Next</string>
+    <string name="nav_back_button">Back</string>
+    <string name="nav_confirm_board">I boarded, continue</string>
+    <string name="nav_finished">You have arrived 🎉</string>
+    <string name="nav_mode_gps">Following your GPS location</string>
+    <string name="nav_mode_schedule">No GPS — following the schedule (grant location access, or turn on GPS, for live tracking)</string>
+    <string name="nav_distance_meters">%1$d m away</string>
+    <string name="nav_walk_instruction">%1$s · %2$d m</string>
+    <string name="nav_board_instruction">Board %1$s at %2$s</string>
+    <string name="nav_ride_instruction">Riding %1$s → get off at %2$s</string>
+    <string name="nav_arrive_instruction">Arrive at %1$s</string>
+    <string name="nav_upcoming">Next: %1$s</string>
+    <string name="nav_unavailable">Live navigation isn\'t available for this route.</string>
+
+    <!-- Trip time picker -->
+    <string name="trip_time_now">Now</string>
+    <string name="trip_time_depart_at">Depart at %1$s</string>
+    <string name="trip_time_arrive_by">Arrive by %1$s</string>
+    <string name="trip_time_dialog_title">Choose trip time</string>
+    <string name="trip_time_mode_depart">Depart at</string>
+    <string name="trip_time_mode_arrive">Arrive by</string>
+    <string name="trip_time_quick_now">Now</string>
+    <string name="trip_time_quick_15">+15 min</string>
+    <string name="trip_time_quick_30">+30 min</string>
+    <string name="trip_time_quick_60">+1 hour</string>
+    <string name="trip_time_pick_custom">Pick date &amp; time…</string>
+
+    <!-- Settings -->
+    <string name="settings_button_description">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_language_title">Language</string>
+    <string name="settings_language_hebrew">עברית (Hebrew)</string>
+    <string name="settings_language_english">English</string>
+    <string name="line_times_button_description">Line times</string>
+    <string name="line_times_title">Line times</string>
+    <string name="line_times_hint">Line number or name…</string>
+    <string name="line_times_from_stop">From: %1$s</string>
+    <string name="line_times_no_results">No departures found for that line on this day.</string>
+    <string name="line_times_unavailable">Line schedule data isn\'t installed on this device yet.</string>
+
+    <!-- Map controls -->
+    <string name="map_zoom_in">Zoom in</string>
+    <string name="map_zoom_out">Zoom out</string>
+    <string name="map_my_location">Center on my location</string>
+    <string name="map_location_unavailable">Couldn\'t get your location. Check GPS is on and permission is granted.</string>
+
+    <!-- Offline data import -->
+    <string name="data_import_button_description">Import updated transit data</string>
+    <string name="data_import_title">Import updated transit data</string>
+    <string name="data_import_explanation">Pick a data package file (copied here over USB/SD card from your computer after running compile_motis_graph.sh + package_motis_data.sh). No internet is used — the file must already be on this device.</string>
+    <string name="data_import_pick_file">Choose data package file…</string>
+    <string name="data_import_in_progress">Importing… this may take a moment.</string>
+    <string name="data_import_success">Import complete (%1$d files). Engine restarted with the new data.</string>
+    <string name="data_import_failure">Import failed: %1$s</string>
+</resources>

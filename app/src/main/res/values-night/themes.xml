@@ -1,0 +1,13 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme (dark). -->
+    <style name="Base.Theme.Movitop" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/movitop_primary</item>
+        <item name="colorPrimaryDark">@color/movitop_primary_dark</item>
+        <item name="colorOnPrimary">@color/movitop_on_primary</item>
+        <item name="android:colorBackground">@color/movitop_background</item>
+        <item name="colorSurface">@color/movitop_surface</item>
+        <item name="colorOnSurface">@color/movitop_text_primary</item>
+        <item name="android:statusBarColor">@color/movitop_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

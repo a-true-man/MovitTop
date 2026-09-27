@@ -1,0 +1,33 @@
+# Movitop - Offline Multimodal Transit App
+
+## Project Overview
+You are an expert Android, C++, and Python developer building "Movitop" - an offline-first public transit and pedestrian navigation app tailored for low-end Android devices (2.5-inch screens, D-Pad/Keypad navigation, limited RAM).
+The app uses the MOTIS routing engine (C++) running locally as a Background Service, exposing a REST API to the Kotlin frontend.
+Development environment: macOS. All build scripts and CLI commands must be macOS compatible.
+
+## Core Architecture
+1.  **Routing Engine:** MOTIS (Modular Open Transportation Information System). Compiled via Android NDK (CMake) as a `.so` library, running a localhost HTTP server on the device.
+2.  **Mapping:** Mapsforge offline vector maps (`.map` format). No Google Maps.
+3.  **Data Storage:** Room/SQLite for static data (Rav-Kav loading stations, list of bus lines, static GBFS locations, fixed "Driver" pricing).
+4.  **UI/UX:** Waze-like premium solid colors, full Light/Dark mode support.
+5.  **Data Processing:** Python scripts (to be run on macOS) that preprocess GTFS (Selective stripping of `shapes.txt`), OSM (filtering out non-transit data), and compile the MOTIS graph.
+
+## UX/UI Paradigms
+*   **Chat-Based Home Screen:** The home screen is an interactive chat interface ("Where are we going today?"). Input is sent to MOTIS geocoding. 
+*   **Screen Constraints (2.5"):** UI must use Progressive Disclosure. Use a `BottomSheetBehavior` for details, allowing the map to take full screen when needed. 
+*   **D-Pad Support:** ALL interactive elements must be focusable. `OnKeyListener` must be implemented to handle D-Pad up/down/center buttons, and the physical 'Back' button must be intercepted to collapse bottom sheets before closing activities.
+
+## Transport Modes Supported
+1. Buses (Transit via GTFS)
+2. Private Bikes (MOTIS `bike` profile)
+3. Walking (MOTIS `foot` profile)
+4. Taxi (Estimated distance/time via MOTIS `car` profile + pricing formula)
+5. Driver/Private Shuttle (Estimated time via MOTIS + static pricing from local DB)
+
+## Cursor Instructions & Workflow Rules
+1.  **Provide actionable code:** When generating Android code, always include the necessary XML layout updates, Kotlin logic, and Gradle dependencies.
+2.  **Scripts first:** When a task requires downloading dependencies (like the MOTIS repo, GTFS files, or Mapsforge libraries), write a `bash` or `python` script for the user to execute on their Mac. 
+3.  **Resource management:** Always use Android string resources (`strings.xml`) to support full localization (Hebrew and English) and RTL layouts.
+4.  **Graceful Fallbacks:** If the user inputs nonsense in the chat, return a predefined funny error message. If no house number is provided, default to the center of the street using MOTIS geocoding.
+
+Always prioritize RAM efficiency and background service stability over complex animations.

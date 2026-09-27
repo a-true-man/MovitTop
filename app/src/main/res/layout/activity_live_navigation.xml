@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/navRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/movitop_primary"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="16dp"
+    tools:context=".LiveNavigationActivity">
+
+    <TextView
+        android:id="@+id/navModeText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:alpha="0.85"
+        android:textColor="@color/movitop_on_primary"
+        android:textSize="11sp"
+        tools:text="עוקב אחרי המיקום שלך ב-GPS" />
+
+    <TextView
+        android:id="@+id/navInstructionText"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:textColor="@color/movitop_on_primary"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        tools:text="פנה שמאלה אל רחוב הרצל · 300 מ׳" />
+
+    <TextView
+        android:id="@+id/navDistanceText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="@color/movitop_on_primary"
+        android:textSize="14sp"
+        tools:text="120 מ׳ מכאן" />
+
+    <TextView
+        android:id="@+id/navUpcomingText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:alpha="0.85"
+        android:textColor="@color/movitop_on_primary"
+        android:textSize="12sp"
+        tools:text="הבא בתור: הגעה ליעד" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/navBackButton"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:layout_weight="1"
+            android:text="@string/nav_back_button"
+            android:textColor="@color/movitop_on_primary"
+            app:backgroundTint="@color/movitop_primary_dark"
+            app:cornerRadius="14dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/navNextButton"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="2"
+            android:text="@string/nav_next_button"
+            android:textColor="@color/movitop_text_primary"
+            app:backgroundTint="@color/movitop_surface"
+            app:cornerRadius="14dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

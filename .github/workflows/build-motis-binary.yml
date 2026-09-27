@@ -1,0 +1,81 @@
+# Cross-compile a Linux ARM64 MOTIS binary for on-device Android execution.
+# Trigger manually from the GitHub Actions tab (workflow_dispatch).
+#
+# Runtime modules (routing, osr, geocoding) are selected via config.yml on the
+# device — the executable is the full MOTIS server built with the upstream
+# linux-arm64-release preset (musl, statically linked).
+
+name: Build MOTIS ARM64 Binary
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    defaults:
+      run:
+        shell: bash
+
+    container:
+      image: ghcr.io/motis-project/docker-cpp-build:latest
+
+    steps:
+      - name: Checkout MOTIS
+        uses: actions/checkout@v4
+        with:
+          repository: motis-project/motis
+          ref: c9bc040e8d55540911775f4a3b2adb60f945c8bf
+          path: motis
+
+      - name: Fetch dependencies (pkg)
+        working-directory: motis
+        run: |
+          git config --global --add safe.directory '*'
+          git config --global url."https://github.com/".insteadOf git@github.com:
+          git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --global http.version HTTP/1.1
+          git config --global http.postBuffer 524288000
+
+          for attempt in 1 2 3 4 5; do
+            find deps -maxdepth 1 -mindepth 1 -type d 2>/dev/null | while read -r dir; do
+              if [ -d "${dir}/.git" ] && ! git -C "${dir}" rev-parse HEAD >/dev/null 2>&1; then
+                echo "Removing broken clone ${dir}"
+                rm -rf "${dir}"
+              fi
+            done
+            rm -f .pkg.lock
+            echo "pkg attempt ${attempt}/5..."
+            if /opt/pkg -l; then
+              exit 0
+            fi
+            echo "pkg failed — waiting 15s before retry"
+            sleep 15
+          done
+          echo "ERROR: pkg dependency fetch failed after 5 attempts" >&2
+          exit 1
+
+      - name: Configure (linux-arm64-release)
+        working-directory: motis
+        run: cmake --preset linux-arm64-release
+
+      # Compile only — no strip/size-reduction (musl strip is unavailable in CI).
+      - name: Build motis executable
+        working-directory: motis
+        run: |
+          JOBS="$(nproc 2>/dev/null || echo 4)"
+          cmake --build --preset linux-arm64-release --target motis -j "${JOBS}"
+          test -f build/arm64-release/motis
+          cp build/arm64-release/motis motis-server
+          chmod +x motis-server
+          file motis-server
+          ls -lh motis-server
+
+      - name: Upload motis-server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: motis-server-arm64
+          path: motis/motis-server
+          retention-days: 30

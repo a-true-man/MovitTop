@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Brand (Waze-like vivid, premium blue) -->
+    <color name="movitop_primary">#2D6CDF</color>
+    <color name="movitop_primary_dark">#1B4FB0</color>
+    <color name="movitop_on_primary">#FFFFFF</color>
+    <color name="movitop_accent">#FF6B4A</color>
+
+    <!-- Light theme surfaces -->
+    <color name="movitop_background">#F5F7FB</color>
+    <color name="movitop_surface">#FFFFFF</color>
+    <color name="movitop_text_primary">#13171F</color>
+    <color name="movitop_text_secondary">#5A6473</color>
+    <color name="movitop_divider">#E2E7F0</color>
+
+    <!-- Chat bubbles (light) -->
+    <color name="movitop_bubble_incoming">#EAEEF6</color>
+    <color name="movitop_on_bubble_incoming">#13171F</color>
+    <color name="movitop_bubble_outgoing">#2D6CDF</color>
+    <color name="movitop_on_bubble_outgoing">#FFFFFF</color>
+
+    <!-- Input + chips (light) -->
+    <color name="movitop_input_bg">#FFFFFF</color>
+    <color name="movitop_input_stroke">#D5DCE8</color>
+    <color name="movitop_chip_bg">#EAEEF6</color>
+    <color name="movitop_chip_text">#2D6CDF</color>
+</resources>

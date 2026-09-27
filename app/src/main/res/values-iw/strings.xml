@@ -1,0 +1,107 @@
+<resources>
+    <!-- MOTIS foreground service (Hebrew) -->
+    <string name="motis_channel_name">מנוע הניווט</string>
+    <string name="motis_channel_description">משאיר את מנוע הניתוב הלא-מקוון פעיל</string>
+    <string name="motis_engine_starting">מפעיל את מנוע הניווט\u2026</string>
+    <string name="motis_engine_ready">מנוע הניווט מוכן</string>
+    <string name="motis_engine_stopped">מנוע הניווט הופסק</string>
+
+    <!-- Origin/destination search form (Hebrew) -->
+    <string name="search_origin_hint">מוצא</string>
+    <string name="search_destination_hint">יעד</string>
+    <string name="search_button">חפש מסלול</string>
+    <string name="search_tap_to_choose">לחץ לחיפוש</string>
+    <string name="search_origin_title">בחירת מוצא</string>
+    <string name="search_destination_title">בחירת יעד</string>
+    <string name="search_location_hint">חפש כתובת או מקום\u2026</string>
+    <string name="search_no_results">לא נמצאו מקומות. נסו שם אחר.</string>
+
+    <!-- Results bottom sheet (Hebrew) -->
+    <string name="results_title">אפשרויות נסיעה</string>
+    <string name="mode_transit">תחבורה ציבורית</string>
+    <string name="mode_driver">נהג</string>
+    <string name="mode_bike">אופניים</string>
+    <string name="mode_walking">הליכה</string>
+    <string name="mode_taxi">מונית</string>
+    <string name="duration_minutes">%1$d דק׳</string>
+    <string name="duration_hours">%1$s שעות</string>
+
+    <!-- Route detail steps (Hebrew) -->
+    <string name="route_details_title">פרטי המסלול</string>
+    <string name="rd_depart">יציאה מ%1$s</string>
+    <string name="rd_arrive">הגעה ל%1$s</string>
+    <string name="rd_walk_to_stop">הליכה לתחנת האוטובוס (5 דק׳)</string>
+    <string name="rd_bus_line">קו 480 לכיוון ירושלים</string>
+    <string name="rd_bus_operator">אגד · תחנה מרכזית</string>
+    <string name="rd_get_off">ירידה בתחנה המרכזית</string>
+    <string name="rd_walk_to_dest">הליכה ליעד (4 דק׳)</string>
+    <string name="rd_drive">נהיגה בכביש 1</string>
+    <string name="rd_taxi">הוזמנה מונית — בדרך אליך</string>
+    <string name="rd_bike">רכיבה בשביל האופניים</string>
+    <string name="rd_walk_full">מסלול הליכה ישיר</string>
+
+    <!-- Offline map (Hebrew) -->
+    <string name="map_missing_log">קובץ מפה לא נמצא ב-%1$s — מוצגת מפה ריקה.</string>
+
+    <!-- Network / errors (Hebrew) -->
+    <string name="search_error_network">אופס, נפל לי הקשר ללוויין 🛰️. האם מנוע הניתוב פועל?</string>
+    <string name="search_error_place">לא הצלחתי למצוא את %1$s 🗺️. נסו שם מדויק יותר, למשל עם שם העיר.</string>
+    <string name="search_no_routes">לא מצאתי מסלול ליעד הזה. אולי ננסה יעד אחר?</string>
+
+    <!-- Live navigation (Hebrew) -->
+    <string name="start_navigation">התחל ניווט</string>
+    <string name="nav_next_button">הבא</string>
+    <string name="nav_back_button">חזור</string>
+    <string name="nav_confirm_board">עליתי, המשך</string>
+    <string name="nav_finished">הגעת ליעד 🎉</string>
+    <string name="nav_mode_gps">עוקב אחרי המיקום שלך ב-GPS</string>
+    <string name="nav_mode_schedule">אין GPS — מתקדם לפי לוח הזמנים המשוער (אפשר להפעיל מיקום/GPS למעקב חי)</string>
+    <string name="nav_distance_meters">%1$d מ׳ מכאן</string>
+    <string name="nav_walk_instruction">%1$s · %2$d מ׳</string>
+    <string name="nav_board_instruction">עלה על %1$s בתחנה %2$s</string>
+    <string name="nav_ride_instruction">נוסע ב-%1$s ← רד בתחנה %2$s</string>
+    <string name="nav_arrive_instruction">הגעה ל-%1$s</string>
+    <string name="nav_upcoming">הבא בתור: %1$s</string>
+    <string name="nav_unavailable">ניווט חי אינו זמין עבור מסלול זה.</string>
+
+    <!-- Trip time picker (Hebrew) -->
+    <string name="trip_time_now">עכשיו</string>
+    <string name="trip_time_depart_at">יציאה ב-%1$s</string>
+    <string name="trip_time_arrive_by">הגעה עד %1$s</string>
+    <string name="trip_time_dialog_title">בחירת זמן נסיעה</string>
+    <string name="trip_time_mode_depart">יציאה ב</string>
+    <string name="trip_time_mode_arrive">הגעה עד</string>
+    <string name="trip_time_quick_now">עכשיו</string>
+    <string name="trip_time_quick_15">+15 דק׳</string>
+    <string name="trip_time_quick_30">+30 דק׳</string>
+    <string name="trip_time_quick_60">+שעה</string>
+    <string name="trip_time_pick_custom">בחירת תאריך ושעה…</string>
+
+    <!-- Settings (Hebrew) -->
+    <string name="settings_button_description">הגדרות</string>
+    <string name="settings_title">הגדרות</string>
+    <string name="settings_language_title">שפה</string>
+    <string name="settings_language_hebrew">עברית</string>
+    <string name="settings_language_english">English (אנגלית)</string>
+    <string name="line_times_button_description">זמני קווים</string>
+    <string name="line_times_title">זמני קווים</string>
+    <string name="line_times_hint">מספר או שם קו…</string>
+    <string name="line_times_from_stop">יוצא מ: %1$s</string>
+    <string name="line_times_no_results">לא נמצאו יציאות לקו הזה ביום שנבחר.</string>
+    <string name="line_times_unavailable">נתוני זמני הקווים עדיין לא מותקנים על המכשיר.</string>
+
+    <!-- Map controls (Hebrew) -->
+    <string name="map_zoom_in">התקרבות</string>
+    <string name="map_zoom_out">התרחקות</string>
+    <string name="map_my_location">מרכז למיקום שלי</string>
+    <string name="map_location_unavailable">לא הצלחנו לאתר את המיקום שלך. ודאו ש-GPS פעיל וההרשאה ניתנה.</string>
+
+    <!-- Offline data import (Hebrew) -->
+    <string name="data_import_button_description">ייבוא נתוני תחבורה מעודכנים</string>
+    <string name="data_import_title">ייבוא נתוני תחבורה מעודכנים</string>
+    <string name="data_import_explanation">בחר קובץ חבילת נתונים (שהועתק למכשיר דרך כבל USB/כרטיס SD מהמחשב, לאחר הרצת compile_motis_graph.sh ו-package_motis_data.sh). לא נעשה שימוש באינטרנט — הקובץ חייב כבר להיות על המכשיר.</string>
+    <string name="data_import_pick_file">בחר קובץ עדכון…</string>
+    <string name="data_import_in_progress">מייבא… זה עשוי לקחת רגע.</string>
+    <string name="data_import_success">הייבוא הושלם (%1$d קבצים). המנוע הופעל מחדש עם הנתונים החדשים.</string>
+    <string name="data_import_failure">הייבוא נכשל: %1$s</string>
+</resources>

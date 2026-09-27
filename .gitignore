@@ -1,0 +1,22 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+.venv-data/
+__pycache__/
+.kotlin/
+
+# Large offline datasets — download via setup_movitop_data.sh
+movitop_data/**
+!movitop_data/config.yml
