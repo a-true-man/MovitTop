@@ -31,4 +31,17 @@ interface MotisApi {
         @Query("arriveBy") arriveBy: Boolean = false,
         @Query("maxDirectTime") maxDirectTime: Int = 21600
     ): PlanResponseDto
+
+    /**
+     * Upcoming departures near a coordinate (no stop id needed) — powers the
+     * "nearby" screen. [radius] is required by MOTIS whenever [center] is used
+     * instead of a `stopId`.
+     */
+    @GET("api/v6/stoptimes")
+    suspend fun stoptimes(
+        @Query("center") center: String,
+        @Query("radius") radius: Int = 700,
+        @Query("n") n: Int = 30,
+        @Query("arriveBy") arriveBy: Boolean = false
+    ): StopTimesResponseDto
 }

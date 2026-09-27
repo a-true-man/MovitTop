@@ -3,6 +3,7 @@ package iam699030.gmail.movitop.search
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import iam699030.gmail.movitop.R
 import iam699030.gmail.movitop.data.GeocodePlace
 import iam699030.gmail.movitop.data.MotisRepository
 import iam699030.gmail.movitop.data.PlaceSuggestions
@@ -23,7 +24,7 @@ class SearchLocationViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
-    private val repository: MotisRepository = RealMotisRepository()
+    private val repository: MotisRepository = RealMotisRepository(application)
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
@@ -62,8 +63,9 @@ class SearchLocationViewModel(
             return
         }
         _isSearching.value = true
+        val israelLabel = getApplication<Application>().getString(R.string.country_israel)
         _results.value = PlaceSuggestions.localMatches(trimmed).map { name ->
-            GeocodePlace(name = name, subtitle = "ישראל", lat = 0.0, lon = 0.0)
+            GeocodePlace(name = name, subtitle = israelLabel, lat = 0.0, lon = 0.0)
         }
         try {
             _results.value = repository.geocodePlaces(trimmed)

@@ -43,13 +43,39 @@ data class LegDto(
     val routeLongName: String? = null,
     val agencyName: String? = null,
     val legGeometry: LegGeometryDto? = null,
-    val steps: List<StepDto>? = null
+    val steps: List<StepDto>? = null,
+    val startTime: String? = null, // ISO-8601, leg departure time
+    val endTime: String? = null, // ISO-8601, leg arrival time
+    val routeColor: String? = null, // hex, no '#', e.g. "2D6CDF" — from GTFS routes.txt
+    val routeTextColor: String? = null
 )
 
 data class PlaceDto(
     val name: String? = null,
     val lat: Double? = null,
-    val lon: Double? = null
+    val lon: Double? = null,
+    val stopId: String? = null,
+    val arrival: String? = null, // ISO-8601, only set on /stoptimes results
+    val departure: String? = null // ISO-8601, only set on /stoptimes results
+)
+
+/** `GET /api/v6/stoptimes` response — upcoming departures/arrivals near a point or stop. */
+data class StopTimesResponseDto(
+    val stopTimes: List<StopTimeDto>? = null,
+    val place: PlaceDto? = null
+)
+
+data class StopTimeDto(
+    val place: PlaceDto? = null, // the stop, with `departure`/`arrival` ISO timestamps
+    val mode: String? = null,
+    val headsign: String? = null,
+    val agencyName: String? = null,
+    val routeShortName: String? = null,
+    val routeLongName: String? = null,
+    val routeColor: String? = null,
+    val routeTextColor: String? = null,
+    val tripId: String? = null,
+    val cancelled: Boolean? = null
 )
 
 /** Encoded Google polyline + the precision used to encode it (7 for /api/v1). */

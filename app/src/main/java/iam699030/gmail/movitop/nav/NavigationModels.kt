@@ -25,7 +25,9 @@ sealed interface NavigationStep {
         val stopName: String,
         val routeLabel: String,
         val agencyName: String?,
-        override val point: GeoPoint
+        override val point: GeoPoint,
+        val departTimeText: String? = null,
+        val colorArgb: Int = 0
     ) : NavigationStep {
         override val estimatedSeconds: Long = 0L
     }
@@ -35,7 +37,9 @@ sealed interface NavigationStep {
         val routeLabel: String,
         val alightStopName: String,
         override val point: GeoPoint,
-        override val estimatedSeconds: Long
+        override val estimatedSeconds: Long,
+        val arriveTimeText: String? = null,
+        val colorArgb: Int = 0
     ) : NavigationStep
 
     data class Alight(

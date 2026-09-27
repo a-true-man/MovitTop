@@ -17,6 +17,9 @@
     <string name="search_destination_title">Choose destination</string>
     <string name="search_location_hint">Search address or place\u2026</string>
     <string name="search_no_results">No places found. Try a different name.</string>
+    <string name="search_use_current_location">My current location</string>
+    <string name="search_locating_current_location">Locating…</string>
+    <string name="country_israel">Israel</string>
 
     <!-- Results bottom sheet -->
     <string name="results_title">Travel options</string>
@@ -27,6 +30,7 @@
     <string name="mode_taxi">Taxi</string>
     <string name="duration_minutes">%1$d min</string>
     <string name="duration_hours">%1$s hours</string>
+    <string name="route_option_time_range">%1$s–%2$s</string>
 
     <!-- Route detail steps -->
     <string name="route_details_title">Route details</string>
@@ -41,6 +45,31 @@
     <string name="rd_taxi">Taxi ordered — on the way</string>
     <string name="rd_bike">Ride along the bike path</string>
     <string name="rd_walk_full">Direct walking route</string>
+    <string name="route_step_walk_to">Walk to %1$s</string>
+    <string name="route_step_bike_to">Bike to %1$s</string>
+    <string name="route_step_drive_to">Drive to %1$s</string>
+    <string name="route_step_transit_to">Line %1$s to %2$s</string>
+    <string name="route_label_with_headsign">Line %1$s toward %2$s</string>
+    <string name="route_label_plain">Line %1$s</string>
+    <string name="route_step_time_range">%1$s–%2$s</string>
+    <string name="route_step_depart_only">Departs %1$s</string>
+    <string name="route_step_arrive_only">Arrives %1$s</string>
+
+    <!-- Turn-by-turn walking directions -->
+    <string name="nav_walk_continue_to">Continue to %1$s</string>
+    <string name="nav_dir_depart">Head out</string>
+    <string name="nav_dir_left">Turn left</string>
+    <string name="nav_dir_hard_left">Turn sharply left</string>
+    <string name="nav_dir_slightly_left">Bear left</string>
+    <string name="nav_dir_right">Turn right</string>
+    <string name="nav_dir_hard_right">Turn sharply right</string>
+    <string name="nav_dir_slightly_right">Bear right</string>
+    <string name="nav_dir_uturn">Make a U-turn</string>
+    <string name="nav_dir_continue">Continue straight</string>
+    <string name="nav_dir_elevator">Take the elevator</string>
+    <string name="nav_dir_stairs">Take the stairs</string>
+    <string name="nav_dir_default">Continue</string>
+    <string name="nav_dir_with_street">%1$s onto %2$s</string>
 
     <!-- Offline map -->
     <string name="map_missing_log">Offline map not found at %1$s — showing empty map.</string>
@@ -61,7 +90,9 @@
     <string name="nav_distance_meters">%1$d m away</string>
     <string name="nav_walk_instruction">%1$s · %2$d m</string>
     <string name="nav_board_instruction">Board %1$s at %2$s</string>
+    <string name="nav_board_instruction_timed">Board %1$s at %2$s (departs %3$s)</string>
     <string name="nav_ride_instruction">Riding %1$s → get off at %2$s</string>
+    <string name="nav_ride_instruction_timed">Riding %1$s → get off at %2$s (arrives %3$s)</string>
     <string name="nav_arrive_instruction">Arrive at %1$s</string>
     <string name="nav_upcoming">Next: %1$s</string>
     <string name="nav_unavailable">Live navigation isn\'t available for this route.</string>
@@ -91,12 +122,28 @@
     <string name="line_times_from_stop">From: %1$s</string>
     <string name="line_times_no_results">No departures found for that line on this day.</string>
     <string name="line_times_unavailable">Line schedule data isn\'t installed on this device yet.</string>
+    <string name="line_times_favorites_title">Saved lines</string>
+    <string name="line_times_favorites_empty">No saved lines yet. Search a line and tap the star to save it.</string>
+    <string name="favorite_star_add_description">Save line</string>
+    <string name="favorite_star_remove_description">Remove saved line</string>
 
     <!-- Map controls -->
     <string name="map_zoom_in">Zoom in</string>
     <string name="map_zoom_out">Zoom out</string>
     <string name="map_my_location">Center on my location</string>
     <string name="map_location_unavailable">Couldn\'t get your location. Check GPS is on and permission is granted.</string>
+
+    <!-- Nearby departures -->
+    <string name="nearby_button_description">Nearby departures</string>
+    <string name="nearby_title">Nearby</string>
+    <string name="nearby_subtitle">Upcoming departures near you</string>
+    <string name="nearby_empty">No upcoming departures found nearby. Try moving closer to a stop, or check GPS is on.</string>
+    <string name="nearby_locating">Finding your location…</string>
+    <string name="nearby_minutes_until">in %1$d min</string>
+    <string name="nearby_departing_now">Departing now</string>
+    <string name="nearby_route_to_here">Directions</string>
+    <string name="nearby_refresh">Refresh</string>
+    <string name="nearby_distance_meters">%1$d m away</string>
 
     <!-- Offline data import -->
     <string name="data_import_button_description">Import updated transit data</string>

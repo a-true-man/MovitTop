@@ -134,12 +134,16 @@ class LiveNavigationActivity : AppCompatActivity() {
         is NavigationStep.Walk -> getString(
             R.string.nav_walk_instruction, step.instruction, step.distanceMeters.roundToInt()
         )
-        is NavigationStep.Board -> getString(
-            R.string.nav_board_instruction, step.routeLabel, step.stopName
-        )
-        is NavigationStep.Ride -> getString(
-            R.string.nav_ride_instruction, step.routeLabel, step.alightStopName
-        )
+        is NavigationStep.Board -> if (step.departTimeText != null) {
+            getString(R.string.nav_board_instruction_timed, step.routeLabel, step.stopName, step.departTimeText)
+        } else {
+            getString(R.string.nav_board_instruction, step.routeLabel, step.stopName)
+        }
+        is NavigationStep.Ride -> if (step.arriveTimeText != null) {
+            getString(R.string.nav_ride_instruction_timed, step.routeLabel, step.alightStopName, step.arriveTimeText)
+        } else {
+            getString(R.string.nav_ride_instruction, step.routeLabel, step.alightStopName)
+        }
         is NavigationStep.Alight -> getString(R.string.nav_arrive_instruction, step.stopName)
         is NavigationStep.Arrive -> getString(R.string.nav_arrive_instruction, step.placeName)
     }

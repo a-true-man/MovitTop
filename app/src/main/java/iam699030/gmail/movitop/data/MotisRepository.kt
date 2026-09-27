@@ -4,7 +4,6 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import iam699030.gmail.movitop.R
 import iam699030.gmail.movitop.nav.NavigationStep
-import kotlinx.coroutines.delay
 
 /** The five transport modes Movitop supports. */
 enum class TransportMode(
@@ -30,13 +29,17 @@ enum class TransportMode(
  * @param subtitle short distinguishing detail shown under the mode label — e.g.
  * which lines/transfers a transit option uses, since several can share the
  * same mode and duration ballpark.
+ * @param departTimeText estimated clock time this option leaves ("14:20"), null when unknown.
+ * @param arriveTimeText estimated clock time this option gets in, null when unknown.
  */
 data class RouteOption(
     val id: String,
     val mode: TransportMode,
     val durationMinutes: Int,
     val priceText: String?,
-    val subtitle: String? = null
+    val subtitle: String? = null,
+    val departTimeText: String? = null,
+    val arriveTimeText: String? = null
 )
 
 /**
@@ -56,15 +59,34 @@ data class GeoPoint(
     val lon: Double
 )
 
-/** One navigational instruction in a route detail view. */
+/**
+ * One navigational instruction in a route detail view.
+ *
+ * @param departTimeText clock time this leg starts (e.g. "14:20"), null when unknown.
+ * @param arriveTimeText clock time this leg ends, null when unknown.
+ * @param colorArgb the color this leg is drawn in on the map (see [legColorFor]) —
+ * shown as the step's marker dot too, so a line change is visually obvious in both places.
+ */
 data class RouteStep(
     val title: String,
-    val subtitle: String?
+    val subtitle: String?,
+    val departTimeText: String? = null,
+    val arriveTimeText: String? = null,
+    val colorArgb: Int = 0
+)
+
+/** One leg's polyline, colored so a line change or a walk is visually distinct on the map. */
+data class MapLeg(
+    val points: List<GeoPoint>,
+    val colorArgb: Int
 )
 
 /**
  * Full step-by-step detail + map polyline for a selected [RouteOption].
  *
+ * @param polyline every leg's points flattened, kept for camera-fit math.
+ * @param legs the same points split per leg with a distinct [MapLeg.colorArgb] each,
+ * for drawing the route as separate colored segments instead of one flat line.
  * @param navigationSteps ordered walk/board/ride/alight cards for the live
  * navigation screen (empty for modes that don't support it yet).
  */
@@ -72,77 +94,53 @@ data class RouteDetail(
     val mode: TransportMode,
     val steps: List<RouteStep>,
     val polyline: List<GeoPoint>,
+    val legs: List<MapLeg> = emptyList(),
     val navigationSteps: List<NavigationStep> = emptyList()
+)
+
+/** One upcoming departure near a point, for the "nearby" screen. */
+data class NearbyDeparture(
+    val routeShortName: String,
+    val headsign: String,
+    val agencyName: String?,
+    val stopName: String,
+    val stopPoint: GeoPoint,
+    val departTimeText: String,
+    val minutesUntil: Long,
+    val distanceMeters: Double,
+    val colorArgb: Int
 )
 
 interface MotisRepository {
     /** Resolves a free-text place query to rich autocomplete candidates. */
     suspend fun geocodePlaces(query: String): List<GeocodePlace>
 
-    /** Returns ranked route summaries between two places. */
-    suspend fun getRoutes(origin: String, dest: String, tripTime: TripTime = TripTime.NOW): List<RouteOption>
+    /**
+     * Returns ranked route summaries between two places.
+     *
+     * @param originCoord when non-null, used verbatim instead of re-geocoding
+     * [origin] by name — the exact point the user already picked (or their
+     * live GPS fix for "current location"), which free-text geocoding could
+     * otherwise resolve to a different, wrong place of the same name.
+     */
+    suspend fun getRoutes(
+        origin: String,
+        dest: String,
+        tripTime: TripTime = TripTime.NOW,
+        originCoord: GeoPoint? = null,
+        destCoord: GeoPoint? = null
+    ): List<RouteOption>
 
     /** Returns step-by-step instructions + a map polyline for one previously-returned [option]. */
     suspend fun getRouteDetail(
         origin: String,
         dest: String,
         option: RouteOption,
-        tripTime: TripTime = TripTime.NOW
+        tripTime: TripTime = TripTime.NOW,
+        originCoord: GeoPoint? = null,
+        destCoord: GeoPoint? = null
     ): RouteDetail
-}
 
-/**
- * Offline-free stand-in used until the native MOTIS engine is linked. Adds a
- * short delay to mimic real computation so the "Calculating…" state is visible.
- */
-class MockMotisRepository : MotisRepository {
-
-    override suspend fun geocodePlaces(query: String): List<GeocodePlace> {
-        delay(200L)
-        return PlaceSuggestions.localMatches(query).map { name ->
-            GeocodePlace(name = name, subtitle = "ישראל", lat = 0.0, lon = 0.0)
-        }.ifEmpty {
-            listOf(GeocodePlace(name = query, subtitle = null, lat = 0.0, lon = 0.0))
-        }
-    }
-
-    override suspend fun getRoutes(origin: String, dest: String, tripTime: TripTime): List<RouteOption> {
-        delay(1_000L)
-        return listOf(
-            RouteOption("transit-0", TransportMode.TRANSIT, durationMinutes = 45, priceText = null, subtitle = "קו 480"),
-            RouteOption("transit-1", TransportMode.TRANSIT, durationMinutes = 48, priceText = null, subtitle = "קו 142 + קו 5"),
-            RouteOption("direct-DRIVER", TransportMode.DRIVER, durationMinutes = 15, priceText = "30₪"),
-            RouteOption("direct-BIKE", TransportMode.BIKE, durationMinutes = 22, priceText = null),
-            RouteOption("direct-WALK", TransportMode.WALKING, durationMinutes = 90, priceText = null),
-            RouteOption("direct-TAXI", TransportMode.TAXI, durationMinutes = 15, priceText = "45-60₪")
-        )
-    }
-
-    override suspend fun getRouteDetail(
-        origin: String,
-        dest: String,
-        option: RouteOption,
-        tripTime: TripTime
-    ): RouteDetail {
-        delay(400L)
-        val mode = option.mode
-        val steps = listOf(
-            RouteStep("יציאה מ$origin", null),
-            RouteStep("המשך במסלול ה${mode.name.lowercase()}", null),
-            RouteStep("הגעה ל$dest", null)
-        )
-        val polyline = mockPolyline()
-        val navSteps = listOf(
-            NavigationStep.Walk("צא מ-$origin והמשך ישר", 300.0, polyline[0], estimatedSeconds = 230),
-            NavigationStep.Walk("פנה שמאלה", 120.0, polyline[1], estimatedSeconds = 90),
-            NavigationStep.Arrive(dest, polyline[2])
-        )
-        return RouteDetail(mode, steps, polyline, navSteps)
-    }
-
-    private fun mockPolyline(): List<GeoPoint> = listOf(
-        GeoPoint(32.0853, 34.7818),
-        GeoPoint(31.9900, 34.9500),
-        GeoPoint(31.7683, 35.2137)
-    )
+    /** Upcoming departures within [radiusMeters] of [point], soonest first. */
+    suspend fun nearbyDepartures(point: GeoPoint, radiusMeters: Int = 700): List<NearbyDeparture>
 }

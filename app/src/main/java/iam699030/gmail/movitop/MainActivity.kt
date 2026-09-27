@@ -33,6 +33,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import iam699030.gmail.movitop.MainViewModel.RoutingState
 import iam699030.gmail.movitop.data.GeoPoint
+import iam699030.gmail.movitop.data.MapLeg
 import iam699030.gmail.movitop.data.RouteAdapter
 import iam699030.gmail.movitop.data.RouteStepAdapter
 import iam699030.gmail.movitop.data.TripTime
@@ -89,7 +90,7 @@ class MainActivity : AppCompatActivity() {
     private val routeAdapter = RouteAdapter { option -> viewModel.selectRoute(option) }
     private val stepAdapter = RouteStepAdapter()
 
-    private var routeOverlay: Polyline? = null
+    private val routeOverlays = mutableListOf<Polyline>()
 
     private val searchLocationLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -99,13 +100,21 @@ class MainActivity : AppCompatActivity() {
         val name = data.getStringExtra(SearchLocationActivity.EXTRA_PLACE_NAME).orEmpty()
         if (name.isEmpty()) return@registerForActivityResult
 
+        // (0,0) is SearchLocationActivity's "not actually resolved" sentinel
+        // for local-only name suggestions (see PlaceSuggestions) — only carry
+        // a coordinate through when it's a real pick, so getRoutes() still
+        // falls back to geocoding the name by text in that case.
+        val lat = data.getDoubleExtra(SearchLocationActivity.EXTRA_PLACE_LAT, 0.0)
+        val lon = data.getDoubleExtra(SearchLocationActivity.EXTRA_PLACE_LON, 0.0)
+        val coord = if (lat != 0.0 || lon != 0.0) GeoPoint(lat, lon) else null
+
         when (pendingSearchField) {
             SearchLocationActivity.FIELD_ORIGIN -> {
-                viewModel.setOrigin(name)
+                viewModel.setOrigin(name, coord)
                 originText.text = name
             }
             SearchLocationActivity.FIELD_DESTINATION -> {
-                viewModel.setDestination(name)
+                viewModel.setDestination(name, coord)
                 destinationText.text = name
             }
         }
@@ -262,27 +271,36 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun drawPolyline(points: List<GeoPoint>) {
+    /** Draws each leg as its own colored segment (see [LegColors]) — a line change or a walk is then visible at a glance. */
+    private fun drawRouteLegs(legs: List<MapLeg>) {
         clearPolyline()
-        if (points.isEmpty()) return
+        val allPoints = legs.flatMap { it.points }
+        if (allPoints.isEmpty()) return
 
-        val paint = AndroidGraphicFactory.INSTANCE.createPaint().apply {
-            color = ContextCompat.getColor(this@MainActivity, R.color.movitop_primary)
-            strokeWidth = 18f
-            setStyle(Style.STROKE)
+        legs.forEach { leg ->
+            if (leg.points.size < 2) return@forEach
+            val paint = AndroidGraphicFactory.INSTANCE.createPaint().apply {
+                color = if (leg.colorArgb != 0) {
+                    leg.colorArgb
+                } else {
+                    ContextCompat.getColor(this@MainActivity, R.color.movitop_primary)
+                }
+                strokeWidth = 18f
+                setStyle(Style.STROKE)
+            }
+            val polyline = Polyline(paint, AndroidGraphicFactory.INSTANCE)
+            leg.points.forEach { polyline.latLongs.add(LatLong(it.lat, it.lon)) }
+            mapView.layerManager.layers.add(polyline)
+            routeOverlays += polyline
         }
-        val polyline = Polyline(paint, AndroidGraphicFactory.INSTANCE)
-        points.forEach { polyline.latLongs.add(LatLong(it.lat, it.lon)) }
-        mapView.layerManager.layers.add(polyline)
-        routeOverlay = polyline
 
-        mapView.model.mapViewPosition.center = LatLong(points.first().lat, points.first().lon)
+        mapView.model.mapViewPosition.center = LatLong(allPoints.first().lat, allPoints.first().lon)
         mapView.model.mapViewPosition.zoomLevel = 10.toByte()
     }
 
     private fun clearPolyline() {
-        routeOverlay?.let { mapView.layerManager.layers.remove(it) }
-        routeOverlay = null
+        routeOverlays.forEach { mapView.layerManager.layers.remove(it) }
+        routeOverlays.clear()
     }
 
     private fun setupResultsSheet() {
@@ -531,7 +549,7 @@ class MainActivity : AppCompatActivity() {
                                 updateFocusChain()
                             }
                         }
-                        if (detail != null) drawPolyline(detail.polyline) else clearPolyline()
+                        if (detail != null) drawRouteLegs(detail.legs) else clearPolyline()
                     }
                 }
             }

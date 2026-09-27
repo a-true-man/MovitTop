@@ -14,6 +14,7 @@
     android:paddingVertical="8dp">
 
     <View
+        android:id="@+id/stepDot"
         android:layout_width="10dp"
         android:layout_height="10dp"
         android:layout_marginEnd="14dp"
@@ -43,5 +44,17 @@
             tools:text="אגד · תחנה מרכזית"
             tools:visibility="visible" />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/stepTimeRange"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textColor="@color/movitop_primary"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:text="14:20"
+        tools:visibility="visible" />
 
 </LinearLayout>

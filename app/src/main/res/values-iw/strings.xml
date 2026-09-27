@@ -15,6 +15,9 @@
     <string name="search_destination_title">בחירת יעד</string>
     <string name="search_location_hint">חפש כתובת או מקום\u2026</string>
     <string name="search_no_results">לא נמצאו מקומות. נסו שם אחר.</string>
+    <string name="search_use_current_location">המיקום הנוכחי שלי</string>
+    <string name="search_locating_current_location">מאתר מיקום…</string>
+    <string name="country_israel">ישראל</string>
 
     <!-- Results bottom sheet (Hebrew) -->
     <string name="results_title">אפשרויות נסיעה</string>
@@ -25,6 +28,7 @@
     <string name="mode_taxi">מונית</string>
     <string name="duration_minutes">%1$d דק׳</string>
     <string name="duration_hours">%1$s שעות</string>
+    <string name="route_option_time_range">%1$s–%2$s</string>
 
     <!-- Route detail steps (Hebrew) -->
     <string name="route_details_title">פרטי המסלול</string>
@@ -39,6 +43,31 @@
     <string name="rd_taxi">הוזמנה מונית — בדרך אליך</string>
     <string name="rd_bike">רכיבה בשביל האופניים</string>
     <string name="rd_walk_full">מסלול הליכה ישיר</string>
+    <string name="route_step_walk_to">הליכה אל %1$s</string>
+    <string name="route_step_bike_to">רכיבה אל %1$s</string>
+    <string name="route_step_drive_to">נסיעה אל %1$s</string>
+    <string name="route_step_transit_to">קו %1$s אל %2$s</string>
+    <string name="route_label_with_headsign">קו %1$s לכיוון %2$s</string>
+    <string name="route_label_plain">קו %1$s</string>
+    <string name="route_step_time_range">%1$s–%2$s</string>
+    <string name="route_step_depart_only">יציאה %1$s</string>
+    <string name="route_step_arrive_only">הגעה %1$s</string>
+
+    <!-- Turn-by-turn walking directions (Hebrew) -->
+    <string name="nav_walk_continue_to">המשך אל %1$s</string>
+    <string name="nav_dir_depart">צא לדרך</string>
+    <string name="nav_dir_left">פנה שמאלה</string>
+    <string name="nav_dir_hard_left">פנה שמאלה בחדות</string>
+    <string name="nav_dir_slightly_left">פנה מעט שמאלה</string>
+    <string name="nav_dir_right">פנה ימינה</string>
+    <string name="nav_dir_hard_right">פנה ימינה בחדות</string>
+    <string name="nav_dir_slightly_right">פנה מעט ימינה</string>
+    <string name="nav_dir_uturn">בצע פרסה</string>
+    <string name="nav_dir_continue">המשך ישר</string>
+    <string name="nav_dir_elevator">עלה במעלית</string>
+    <string name="nav_dir_stairs">עלה/רד במדרגות</string>
+    <string name="nav_dir_default">המשך</string>
+    <string name="nav_dir_with_street">%1$s אל %2$s</string>
 
     <!-- Offline map (Hebrew) -->
     <string name="map_missing_log">קובץ מפה לא נמצא ב-%1$s — מוצגת מפה ריקה.</string>
@@ -59,7 +88,9 @@
     <string name="nav_distance_meters">%1$d מ׳ מכאן</string>
     <string name="nav_walk_instruction">%1$s · %2$d מ׳</string>
     <string name="nav_board_instruction">עלה על %1$s בתחנה %2$s</string>
+    <string name="nav_board_instruction_timed">עלה על %1$s בתחנה %2$s (יוצא ב-%3$s)</string>
     <string name="nav_ride_instruction">נוסע ב-%1$s ← רד בתחנה %2$s</string>
+    <string name="nav_ride_instruction_timed">נוסע ב-%1$s ← רד בתחנה %2$s (מגיע ב-%3$s)</string>
     <string name="nav_arrive_instruction">הגעה ל-%1$s</string>
     <string name="nav_upcoming">הבא בתור: %1$s</string>
     <string name="nav_unavailable">ניווט חי אינו זמין עבור מסלול זה.</string>
@@ -89,12 +120,28 @@
     <string name="line_times_from_stop">יוצא מ: %1$s</string>
     <string name="line_times_no_results">לא נמצאו יציאות לקו הזה ביום שנבחר.</string>
     <string name="line_times_unavailable">נתוני זמני הקווים עדיין לא מותקנים על המכשיר.</string>
+    <string name="line_times_favorites_title">קווים שמורים</string>
+    <string name="line_times_favorites_empty">אין עדיין קווים שמורים. חפשו קו ולחצו על הכוכב כדי לשמור אותו.</string>
+    <string name="favorite_star_add_description">שמור קו</string>
+    <string name="favorite_star_remove_description">הסר קו שמור</string>
 
     <!-- Map controls (Hebrew) -->
     <string name="map_zoom_in">התקרבות</string>
     <string name="map_zoom_out">התרחקות</string>
     <string name="map_my_location">מרכז למיקום שלי</string>
     <string name="map_location_unavailable">לא הצלחנו לאתר את המיקום שלך. ודאו ש-GPS פעיל וההרשאה ניתנה.</string>
+
+    <!-- Nearby departures (Hebrew) -->
+    <string name="nearby_button_description">יציאות בקרבת מקום</string>
+    <string name="nearby_title">בקרבת מקום</string>
+    <string name="nearby_subtitle">היציאות הקרובות אליך</string>
+    <string name="nearby_empty">לא נמצאו יציאות בקרבת מקום. נסו להתקרב לתחנה, או ודאו ש-GPS פעיל.</string>
+    <string name="nearby_locating">מאתר את המיקום שלך…</string>
+    <string name="nearby_minutes_until">בעוד %1$d דק׳</string>
+    <string name="nearby_departing_now">יוצא עכשיו</string>
+    <string name="nearby_route_to_here">ניווט</string>
+    <string name="nearby_refresh">רענון</string>
+    <string name="nearby_distance_meters">%1$d מ׳ מכאן</string>
 
     <!-- Offline data import (Hebrew) -->
     <string name="data_import_button_description">ייבוא נתוני תחבורה מעודכנים</string>

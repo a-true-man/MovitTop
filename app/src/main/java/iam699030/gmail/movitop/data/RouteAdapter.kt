@@ -25,6 +25,7 @@ class RouteAdapter(
         val label: TextView = view.findViewById(R.id.modeLabel)
         val duration: TextView = view.findViewById(R.id.modeDuration)
         val price: TextView = view.findViewById(R.id.modePrice)
+        val timeRange: TextView = view.findViewById(R.id.modeTimeRange)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RouteViewHolder {
@@ -62,6 +63,15 @@ class RouteAdapter(
         } else {
             holder.price.visibility = View.VISIBLE
             holder.price.text = option.priceText
+        }
+
+        val depart = option.departTimeText
+        val arrive = option.arriveTimeText
+        if (depart != null && arrive != null) {
+            holder.timeRange.visibility = View.VISIBLE
+            holder.timeRange.text = context.getString(R.string.route_option_time_range, depart, arrive)
+        } else {
+            holder.timeRange.visibility = View.GONE
         }
     }
 

@@ -1,13 +1,18 @@
 package iam699030.gmail.movitop.data
 
+import android.content.Context
 import iam699030.gmail.movitop.MotisBinaryManager
+import iam699030.gmail.movitop.R
+import iam699030.gmail.movitop.data.api.IsoTime
 import iam699030.gmail.movitop.data.api.ItineraryDto
 import iam699030.gmail.movitop.data.toGeocodePlace
 import iam699030.gmail.movitop.data.api.LegDto
 import iam699030.gmail.movitop.data.api.MotisApi
 import iam699030.gmail.movitop.data.api.PolylineDecoder
 import iam699030.gmail.movitop.data.api.StepDto
+import iam699030.gmail.movitop.data.api.StopTimeDto
 import iam699030.gmail.movitop.nav.NavigationStep
+import iam699030.gmail.movitop.nav.haversineMeters
 import iam699030.gmail.movitop.nav.pointAtFraction
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -29,6 +34,7 @@ private const val MAX_TRANSIT_OPTIONS = 4
  * (127.0.0.1, no network egress — required for full offline operation).
  */
 class RealMotisRepository(
+    private val context: Context,
     baseUrl: String = "${MotisBinaryManager.BASE_URL}/"
 ) : MotisRepository {
 
@@ -62,7 +68,7 @@ class RealMotisRepository(
         if (trimmed.length < 2) return emptyList()
 
         val local = PlaceSuggestions.localMatches(trimmed).map { name ->
-            GeocodePlace(name = name, subtitle = "ישראל", lat = 0.0, lon = 0.0)
+            GeocodePlace(name = name, subtitle = context.getString(R.string.country_israel), lat = 0.0, lon = 0.0)
         }
         val remote = try {
             api.geocode(trimmed).mapNotNull { it.toGeocodePlace() }
@@ -74,9 +80,15 @@ class RealMotisRepository(
             .take(12)
     }
 
-    override suspend fun getRoutes(origin: String, dest: String, tripTime: TripTime): List<RouteOption> {
-        val from = geocoder.resolve(origin, context = dest)
-        val to = geocoder.resolve(dest, context = origin)
+    override suspend fun getRoutes(
+        origin: String,
+        dest: String,
+        tripTime: TripTime,
+        originCoord: GeoPoint?,
+        destCoord: GeoPoint?
+    ): List<RouteOption> {
+        val from = resolvePlace(origin, originCoord, placeContext = dest)
+        val to = resolvePlace(dest, destCoord, placeContext = origin)
         val plan = api.plan(
             fromPlace = from,
             toPlace = to,
@@ -100,7 +112,9 @@ class RealMotisRepository(
                     mode = TransportMode.TRANSIT,
                     durationMinutes = minutesOf(itinerary),
                     priceText = null,
-                    subtitle = transitSubtitle(itinerary)
+                    subtitle = transitSubtitle(itinerary),
+                    departTimeText = IsoTime.toClockText(itinerary.startTime),
+                    arriveTimeText = IsoTime.toClockText(itinerary.endTime)
                 )
             }
 
@@ -108,6 +122,8 @@ class RealMotisRepository(
             val mode = itinerary.legs?.firstOrNull()?.mode ?: return@forEach
             val minutes = minutesOf(itinerary)
             val meters = itinerary.legs.sumOf { it.distance ?: 0.0 }
+            val depart = IsoTime.toClockText(itinerary.startTime)
+            val arrive = IsoTime.toClockText(itinerary.endTime)
             when (mode) {
                 // maxDirectTime is raised well past 30 min so long CAR trips aren't
                 // dropped (see MotisApi.plan) — but that means WALK/BIKE can now
@@ -117,17 +133,17 @@ class RealMotisRepository(
                 // intentionally left uncapped — a multi-hour drive is normal.
                 "WALK" -> if (minutes <= MAX_WALK_MINUTES) {
                     itineraryCache["direct-WALK"] = itinerary
-                    options += RouteOption("direct-WALK", TransportMode.WALKING, minutes, null)
+                    options += RouteOption("direct-WALK", TransportMode.WALKING, minutes, null, departTimeText = depart, arriveTimeText = arrive)
                 }
                 "BIKE" -> if (minutes <= MAX_BIKE_MINUTES) {
                     itineraryCache["direct-BIKE"] = itinerary
-                    options += RouteOption("direct-BIKE", TransportMode.BIKE, minutes, null)
+                    options += RouteOption("direct-BIKE", TransportMode.BIKE, minutes, null, departTimeText = depart, arriveTimeText = arrive)
                 }
                 "CAR" -> {
                     itineraryCache["direct-DRIVER"] = itinerary
                     itineraryCache["direct-TAXI"] = itinerary
-                    options += RouteOption("direct-DRIVER", TransportMode.DRIVER, minutes, driverPrice(meters))
-                    options += RouteOption("direct-TAXI", TransportMode.TAXI, minutes, taxiPrice(meters))
+                    options += RouteOption("direct-DRIVER", TransportMode.DRIVER, minutes, driverPrice(meters), departTimeText = depart, arriveTimeText = arrive)
+                    options += RouteOption("direct-TAXI", TransportMode.TAXI, minutes, taxiPrice(meters), departTimeText = depart, arriveTimeText = arrive)
                 }
             }
         }
@@ -138,15 +154,17 @@ class RealMotisRepository(
         origin: String,
         dest: String,
         option: RouteOption,
-        tripTime: TripTime
+        tripTime: TripTime,
+        originCoord: GeoPoint?,
+        destCoord: GeoPoint?
     ): RouteDetail {
         val cached = itineraryCache[option.id]
         val itinerary = cached ?: run {
             // Cache miss (e.g. repository was recreated since getRoutes()) —
             // re-query and best-effort pick the closest match by mode/duration
             // rather than failing outright.
-            val from = geocoder.resolve(origin, context = dest)
-            val to = geocoder.resolve(dest, context = origin)
+            val from = resolvePlace(origin, originCoord, placeContext = dest)
+            val to = resolvePlace(dest, destCoord, placeContext = origin)
             val mode = option.mode
             val transit = if (mode == TransportMode.TRANSIT) "TRANSIT" else ""
             val direct = when (mode) {
@@ -161,15 +179,50 @@ class RealMotisRepository(
         }
 
         val legs = itinerary?.legs.orEmpty()
-        val steps = legs.map { leg -> RouteStep(stepTitle(leg), stepSubtitle(leg)) }
-        val polyline = legs.flatMap { leg ->
-            PolylineDecoder.decode(
-                leg.legGeometry?.points,
-                leg.legGeometry?.precision ?: 7
+        val steps = legs.map { leg -> buildRouteStep(leg) }
+        val mapLegs = legs.map { leg ->
+            MapLeg(
+                points = PolylineDecoder.decode(leg.legGeometry?.points, leg.legGeometry?.precision ?: 7),
+                colorArgb = LegColors.forLeg(leg)
             )
         }
-        return RouteDetail(option.mode, steps, polyline, buildNavigationSteps(legs, dest))
+        val polyline = mapLegs.flatMap { it.points }
+        return RouteDetail(option.mode, steps, polyline, mapLegs, buildNavigationSteps(legs, dest))
     }
+
+    override suspend fun nearbyDepartures(point: GeoPoint, radiusMeters: Int): List<NearbyDeparture> {
+        val response = try {
+            api.stoptimes(center = "${point.lat},${point.lon}", radius = radiusMeters)
+        } catch (_: Exception) {
+            return emptyList()
+        }
+        return response.stopTimes.orEmpty().mapNotNull { it.toNearbyDeparture(point) }
+    }
+
+    private fun StopTimeDto.toNearbyDeparture(origin: GeoPoint): NearbyDeparture? {
+        val stopPlace = place ?: return null
+        val lat = stopPlace.lat ?: return null
+        val lon = stopPlace.lon ?: return null
+        val departIso = stopPlace.departure ?: stopPlace.arrival ?: return null
+        val epoch = IsoTime.toEpochMillis(departIso) ?: return null
+        val stopPoint = GeoPoint(lat, lon)
+        return NearbyDeparture(
+            routeShortName = routeShortName ?: routeLongName ?: mode.orEmpty(),
+            headsign = headsign ?: routeLongName.orEmpty(),
+            agencyName = agencyName,
+            stopName = stopPlace.name ?: "",
+            stopPoint = stopPoint,
+            departTimeText = IsoTime.toClockText(departIso) ?: "",
+            minutesUntil = ((epoch - System.currentTimeMillis()) / 60_000.0).roundToInt().toLong().coerceAtLeast(0L),
+            distanceMeters = haversineMeters(origin, stopPoint),
+            colorArgb = routeColor?.let { LegColors.fallbackFor(it) }
+                ?: LegColors.fallbackFor(routeShortName ?: headsign ?: mode.orEmpty())
+        )
+    }
+
+    /** "lat,lon" straight from [coord] when known, otherwise geocode [place] by name. */
+    private suspend fun resolvePlace(place: String, coord: GeoPoint?, placeContext: String?): String =
+        coord?.let { "${it.lat},${it.lon}" } ?: geocoder.resolve(place, placeContext)
 
     /** e.g. "480" or "142 + 5" — lets the UI tell apart several TRANSIT options at a glance. */
     private fun transitSubtitle(itinerary: ItineraryDto): String? {
@@ -178,6 +231,14 @@ class RealMotisRepository(
             .mapNotNull { it.routeShortName ?: it.headsign }
         return lines.takeIf { it.isNotEmpty() }?.joinToString(" + ")
     }
+
+    private fun buildRouteStep(leg: LegDto): RouteStep = RouteStep(
+        title = stepTitle(leg),
+        subtitle = stepSubtitle(leg),
+        departTimeText = IsoTime.toClockText(leg.startTime),
+        arriveTimeText = IsoTime.toClockText(leg.endTime),
+        colorArgb = LegColors.forLeg(leg)
+    )
 
     /** Walk/board/ride/arrive cards for the live navigation screen (see nav/). */
     private fun buildNavigationSteps(legs: List<LegDto>, destName: String): List<NavigationStep> {
@@ -196,7 +257,7 @@ class RealMotisRepository(
                 val legSteps = leg.steps.orEmpty()
                 if (legSteps.isEmpty() || legPolyline.isEmpty()) {
                     navSteps += NavigationStep.Walk(
-                        instruction = "המשך אל ${to?.name ?: ""}",
+                        instruction = getString(R.string.nav_walk_continue_to, to?.name.orEmpty()),
                         distanceMeters = leg.distance ?: 0.0,
                         point = toPoint,
                         estimatedSeconds = leg.duration ?: walkSeconds(leg.distance ?: 0.0)
@@ -217,20 +278,24 @@ class RealMotisRepository(
                     }
                 }
             } else {
-                val line = leg.routeShortName ?: leg.headsign ?: leg.mode.orEmpty()
-                val routeLabel = if (leg.headsign != null) "קו $line לכיוון ${leg.headsign}" else "קו $line"
+                val routeLabel = routeLabelFor(leg)
+                val color = LegColors.forLeg(leg)
                 val from = leg.from
                 navSteps += NavigationStep.Board(
                     stopName = from?.name ?: "",
                     routeLabel = routeLabel,
                     agencyName = leg.agencyName,
-                    point = GeoPoint(from?.lat ?: 0.0, from?.lon ?: 0.0)
+                    point = GeoPoint(from?.lat ?: 0.0, from?.lon ?: 0.0),
+                    departTimeText = IsoTime.toClockText(leg.startTime),
+                    colorArgb = color
                 )
                 navSteps += NavigationStep.Ride(
                     routeLabel = routeLabel,
                     alightStopName = to?.name ?: "",
                     point = toPoint,
-                    estimatedSeconds = leg.duration ?: 0L
+                    estimatedSeconds = leg.duration ?: 0L,
+                    arriveTimeText = IsoTime.toClockText(leg.endTime),
+                    colorArgb = color
                 )
             }
         }
@@ -241,6 +306,15 @@ class RealMotisRepository(
         return navSteps
     }
 
+    private fun routeLabelFor(leg: LegDto): String {
+        val line = leg.routeShortName ?: leg.headsign ?: leg.mode.orEmpty()
+        return if (leg.headsign != null) {
+            getString(R.string.route_label_with_headsign, line, leg.headsign)
+        } else {
+            getString(R.string.route_label_plain, line)
+        }
+    }
+
     /** Fallback duration estimate (~4.7 km/h) when MOTIS doesn't give one directly. */
     private fun walkSeconds(distanceMeters: Double): Long =
         (distanceMeters / 1.3).roundToInt().toLong().coerceAtLeast(5L)
@@ -248,20 +322,20 @@ class RealMotisRepository(
     private fun stepInstructionText(step: StepDto): String {
         val street = step.streetName?.takeIf { it.isNotBlank() }
         val directionText = when (step.relativeDirection) {
-            "DEPART" -> "צא לדרך"
-            "LEFT" -> "פנה שמאלה"
-            "HARD_LEFT" -> "פנה שמאלה בחדות"
-            "SLIGHTLY_LEFT" -> "פנה מעט שמאלה"
-            "RIGHT" -> "פנה ימינה"
-            "HARD_RIGHT" -> "פנה ימינה בחדות"
-            "SLIGHTLY_RIGHT" -> "פנה מעט ימינה"
-            "UTURN_LEFT", "UTURN_RIGHT" -> "בצע פרסה"
-            "CONTINUE" -> "המשך ישר"
-            "ELEVATOR" -> "עלה במעלית"
-            "STAIRS" -> "עלה/רד במדרגות"
-            else -> "המשך"
+            "DEPART" -> getString(R.string.nav_dir_depart)
+            "LEFT" -> getString(R.string.nav_dir_left)
+            "HARD_LEFT" -> getString(R.string.nav_dir_hard_left)
+            "SLIGHTLY_LEFT" -> getString(R.string.nav_dir_slightly_left)
+            "RIGHT" -> getString(R.string.nav_dir_right)
+            "HARD_RIGHT" -> getString(R.string.nav_dir_hard_right)
+            "SLIGHTLY_RIGHT" -> getString(R.string.nav_dir_slightly_right)
+            "UTURN_LEFT", "UTURN_RIGHT" -> getString(R.string.nav_dir_uturn)
+            "CONTINUE" -> getString(R.string.nav_dir_continue)
+            "ELEVATOR" -> getString(R.string.nav_dir_elevator)
+            "STAIRS" -> getString(R.string.nav_dir_stairs)
+            else -> getString(R.string.nav_dir_default)
         }
-        return if (street != null) "$directionText אל $street" else directionText
+        return if (street != null) getString(R.string.nav_dir_with_street, directionText, street) else directionText
     }
 
     // --- helpers --------------------------------------------------------------
@@ -276,12 +350,12 @@ class RealMotisRepository(
     private fun stepTitle(leg: LegDto): String {
         val destination = leg.to?.name ?: ""
         return when (leg.mode) {
-            "WALK" -> "הליכה אל $destination"
-            "BIKE" -> "רכיבה אל $destination"
-            "CAR" -> "נסיעה אל $destination"
+            "WALK" -> getString(R.string.route_step_walk_to, destination)
+            "BIKE" -> getString(R.string.route_step_bike_to, destination)
+            "CAR" -> getString(R.string.route_step_drive_to, destination)
             else -> {
                 val line = leg.routeShortName ?: leg.headsign ?: leg.mode.orEmpty()
-                "קו $line אל $destination"
+                getString(R.string.route_step_transit_to, line, destination)
             }
         }
     }
@@ -290,8 +364,8 @@ class RealMotisRepository(
         val minutes = ((leg.duration ?: 0L) / 60.0).roundToInt()
         val agency = leg.agencyName
         return when {
-            agency != null && minutes > 0 -> "$agency · $minutes דק׳"
-            minutes > 0 -> "$minutes דק׳"
+            agency != null && minutes > 0 -> "$agency · ${getString(R.string.duration_minutes, minutes)}"
+            minutes > 0 -> getString(R.string.duration_minutes, minutes)
             else -> agency
         }
     }
@@ -313,4 +387,6 @@ class RealMotisRepository(
         fmt.timeZone = TimeZone.getTimeZone("UTC")
         return fmt.format(epochMillis?.let { Date(it) } ?: Date())
     }
+
+    private fun getString(resId: Int, vararg args: Any): String = context.getString(resId, *args)
 }

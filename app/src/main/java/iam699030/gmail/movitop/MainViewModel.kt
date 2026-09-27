@@ -3,6 +3,7 @@ package iam699030.gmail.movitop
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import iam699030.gmail.movitop.data.GeoPoint
 import iam699030.gmail.movitop.data.MotisRepository
 import iam699030.gmail.movitop.data.PlaceGeocoder
 import iam699030.gmail.movitop.data.RealMotisRepository
@@ -22,7 +23,7 @@ class MainViewModel(
     application: Application
 ) : AndroidViewModel(application) {
 
-    private val repository: MotisRepository = RealMotisRepository()
+    private val repository: MotisRepository = RealMotisRepository(application)
 
     sealed interface RoutingState {
         data object Idle : RoutingState
@@ -34,6 +35,11 @@ class MainViewModel(
     data class UiState(
         val originQuery: String = "",
         val destinationQuery: String = "",
+        // Set when the query came from an exact pick (search result or GPS fix)
+        // rather than free text, so search()/selectRoute() can route against
+        // that exact point instead of re-geocoding the name (see MotisRepository).
+        val originCoord: GeoPoint? = null,
+        val destinationCoord: GeoPoint? = null,
         val routingState: RoutingState = RoutingState.Idle,
         val errorMessage: String? = null,
         val tripTime: TripTime = TripTime.NOW
@@ -48,12 +54,12 @@ class MainViewModel(
     private val _routeDetail = MutableStateFlow<RouteDetail?>(null)
     val routeDetail: StateFlow<RouteDetail?> = _routeDetail.asStateFlow()
 
-    fun setOrigin(name: String) {
-        _uiState.update { it.copy(originQuery = name.trim(), errorMessage = null) }
+    fun setOrigin(name: String, coord: GeoPoint? = null) {
+        _uiState.update { it.copy(originQuery = name.trim(), originCoord = coord, errorMessage = null) }
     }
 
-    fun setDestination(name: String) {
-        _uiState.update { it.copy(destinationQuery = name.trim(), errorMessage = null) }
+    fun setDestination(name: String, coord: GeoPoint? = null) {
+        _uiState.update { it.copy(destinationQuery = name.trim(), destinationCoord = coord, errorMessage = null) }
     }
 
     fun setTripTime(tripTime: TripTime) {
@@ -76,9 +82,13 @@ class MainViewModel(
             )
         }
 
+        val originCoord = _uiState.value.originCoord
+        val destCoord = _uiState.value.destinationCoord
         viewModelScope.launch {
             try {
-                val result = repository.getRoutes(origin, destination, _uiState.value.tripTime)
+                val result = repository.getRoutes(
+                    origin, destination, _uiState.value.tripTime, originCoord, destCoord
+                )
                 if (result.isEmpty()) {
                     _uiState.update {
                         it.copy(
@@ -118,10 +128,12 @@ class MainViewModel(
         _routeDetail.value = null
         _uiState.update { it.copy(routingState = RoutingState.ViewingRouteDetails(option)) }
 
+        val originCoord = _uiState.value.originCoord
+        val destCoord = _uiState.value.destinationCoord
         viewModelScope.launch {
             try {
                 _routeDetail.value = repository.getRouteDetail(
-                    origin, destination, option, _uiState.value.tripTime
+                    origin, destination, option, _uiState.value.tripTime, originCoord, destCoord
                 )
             } catch (e: PlaceGeocoder.PlaceNotFoundException) {
                 val place = e.message?.substringAfter("\"")?.substringBefore("\"") ?: destination

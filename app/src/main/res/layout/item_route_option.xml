@@ -57,6 +57,17 @@
                 android:textSize="13sp"
                 tools:text="45 דק׳" />
 
+            <TextView
+                android:id="@+id/modeTimeRange"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/movitop_text_secondary"
+                android:textSize="12sp"
+                android:visibility="gone"
+                tools:text="14:20–15:05"
+                tools:visibility="visible" />
+
         </LinearLayout>
 
         <TextView
