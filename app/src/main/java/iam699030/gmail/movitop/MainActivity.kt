@@ -40,6 +40,7 @@ import iam699030.gmail.movitop.data.TripTime
 import iam699030.gmail.movitop.map.MapThemeHelper
 import iam699030.gmail.movitop.nav.LocationTracker
 import iam699030.gmail.movitop.nav.PendingNavigation
+import iam699030.gmail.movitop.nearby.NearbyActivity
 import iam699030.gmail.movitop.search.SearchLocationActivity
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -76,6 +77,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var detailsDuration: TextView
     private lateinit var startNavigationButton: MaterialButton
     private lateinit var settingsButton: MaterialButton
+    private lateinit var nearbyButton: MaterialButton
     private lateinit var lineTimesButton: MaterialButton
     private lateinit var zoomInButton: MaterialButton
     private lateinit var zoomOutButton: MaterialButton
@@ -120,6 +122,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // NearbyActivity returns a stop the exact same way SearchLocationActivity
+    // returns a place — picking a nearby departure means "I'll board here",
+    // so it always lands in the origin field.
+    private val nearbyLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val data = result.data ?: return@registerForActivityResult
+        val name = data.getStringExtra(SearchLocationActivity.EXTRA_PLACE_NAME).orEmpty()
+        if (name.isEmpty()) return@registerForActivityResult
+        val lat = data.getDoubleExtra(SearchLocationActivity.EXTRA_PLACE_LAT, 0.0)
+        val lon = data.getDoubleExtra(SearchLocationActivity.EXTRA_PLACE_LON, 0.0)
+        viewModel.setOrigin(name, GeoPoint(lat, lon))
+        originText.text = name
+    }
+
     private var pendingSearchField: String = SearchLocationActivity.FIELD_ORIGIN
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -152,6 +170,8 @@ class MainActivity : AppCompatActivity() {
         startNavigationButton.setOnClickListener { startLiveNavigation() }
         settingsButton = findViewById(R.id.settingsButton)
         settingsButton.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
+        nearbyButton = findViewById(R.id.nearbyButton)
+        nearbyButton.setOnClickListener { nearbyLauncher.launch(Intent(this, NearbyActivity::class.java)) }
         lineTimesButton = findViewById(R.id.lineTimesButton)
         lineTimesButton.setOnClickListener { startActivity(Intent(this, LineTimesActivity::class.java)) }
         zoomInButton = findViewById(R.id.zoomInButton)

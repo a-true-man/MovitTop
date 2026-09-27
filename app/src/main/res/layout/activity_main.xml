@@ -70,10 +70,23 @@
                         android:layout_weight="1" />
 
                     <com.google.android.material.button.MaterialButton
+                        android:id="@+id/nearbyButton"
+                        style="@style/Widget.Material3.Button.IconButton"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:contentDescription="@string/nearby_button_description"
+                        app:icon="@drawable/ic_my_location"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        app:iconSize="18dp"
+                        app:iconTint="@color/movitop_text_secondary" />
+
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/lineTimesButton"
                         style="@style/Widget.Material3.Button.IconButton"
                         android:layout_width="32dp"
                         android:layout_height="32dp"
+                        android:layout_marginStart="4dp"
                         android:contentDescription="@string/line_times_button_description"
                         app:icon="@drawable/ic_schedule"
                         app:iconGravity="textStart"
