@@ -20,6 +20,7 @@
     <string name="search_use_current_location">My current location</string>
     <string name="search_locating_current_location">Locating…</string>
     <string name="country_israel">Israel</string>
+    <string name="recent_places_title">Recent</string>
 
     <!-- Results bottom sheet -->
     <string name="results_title">Travel options</string>

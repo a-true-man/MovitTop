@@ -18,6 +18,7 @@
     <string name="search_use_current_location">המיקום הנוכחי שלי</string>
     <string name="search_locating_current_location">מאתר מיקום…</string>
     <string name="country_israel">ישראל</string>
+    <string name="recent_places_title">לאחרונה</string>
 
     <!-- Results bottom sheet (Hebrew) -->
     <string name="results_title">אפשרויות נסיעה</string>

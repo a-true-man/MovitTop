@@ -41,6 +41,7 @@ class SearchLocationActivity : AppCompatActivity() {
     private lateinit var emptyState: TextView
     private lateinit var currentLocationRow: View
     private lateinit var currentLocationProgress: ProgressBar
+    private lateinit var recentPlacesHeader: TextView
 
     private val resultAdapter = GeocodeResultAdapter { place -> returnPlace(place) }
 
@@ -68,6 +69,7 @@ class SearchLocationActivity : AppCompatActivity() {
         emptyState = findViewById(R.id.emptyState)
         currentLocationRow = findViewById(R.id.currentLocationRow)
         currentLocationProgress = findViewById(R.id.currentLocationProgress)
+        recentPlacesHeader = findViewById(R.id.recentPlacesHeader)
 
         currentLocationRow.setOnClickListener { onCurrentLocationSelected() }
         currentLocationRow.setOnKeyListener { _, keyCode, event ->
@@ -123,19 +125,11 @@ class SearchLocationActivity : AppCompatActivity() {
     private fun observeViewModel() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.results.collect { results ->
-                        // DPAD_DOWN with results present is handled by
-                        // setupKeyHandling()'s key listener (jumps straight into
-                        // the list), so nextFocusDownId only matters when it's
-                        // empty — leave it pointed at currentLocationRow (set in
-                        // XML) so arrow-down still lands somewhere useful then.
-                        resultAdapter.submitList(results)
-                        emptyState.visibility =
-                            if (results.isEmpty() && searchInput.text.length >= 2) View.VISIBLE
-                            else View.GONE
-                    }
-                }
+                // Before the user has typed anything, show recently-picked
+                // places instead of an empty list — both flows feed the same
+                // list, so either updating re-renders it.
+                launch { viewModel.results.collect { renderList() } }
+                launch { viewModel.recents.collect { renderList() } }
                 launch {
                     viewModel.isSearching.collect { searching ->
                         searchProgress.visibility = if (searching) View.VISIBLE else View.GONE
@@ -143,6 +137,18 @@ class SearchLocationActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun renderList() {
+        val showingRecents = searchInput.text.length < 2
+        val list = if (showingRecents) viewModel.recents.value else viewModel.results.value
+        // DPAD_DOWN with results present is handled by setupKeyHandling()'s key
+        // listener (jumps straight into the list), so nextFocusDownId only
+        // matters when it's empty — left pointed at currentLocationRow (XML)
+        // so arrow-down still lands somewhere useful then.
+        resultAdapter.submitList(list)
+        recentPlacesHeader.visibility = if (showingRecents && list.isNotEmpty()) View.VISIBLE else View.GONE
+        emptyState.visibility = if (!showingRecents && list.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun onCurrentLocationSelected() {
@@ -173,7 +179,7 @@ class SearchLocationActivity : AppCompatActivity() {
                     subtitle = null,
                     lat = point.lat,
                     lon = point.lon,
-                    id = "current_location"
+                    id = SearchLocationViewModel.CURRENT_LOCATION_ID
                 )
             )
         }
@@ -184,6 +190,7 @@ class SearchLocationActivity : AppCompatActivity() {
     }
 
     private fun returnPlace(place: GeocodePlace) {
+        viewModel.recordPick(place)
         setResult(
             RESULT_OK,
             Intent().apply {

@@ -8,6 +8,7 @@ import iam699030.gmail.movitop.data.GeocodePlace
 import iam699030.gmail.movitop.data.MotisRepository
 import iam699030.gmail.movitop.data.PlaceSuggestions
 import iam699030.gmail.movitop.data.RealMotisRepository
+import iam699030.gmail.movitop.data.RecentPlacesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +26,7 @@ class SearchLocationViewModel(
 ) : AndroidViewModel(application) {
 
     private val repository: MotisRepository = RealMotisRepository(application)
+    private val recentPlaces = RecentPlacesRepository(application)
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
@@ -35,12 +37,23 @@ class SearchLocationViewModel(
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
+    private val _recents = MutableStateFlow(recentPlaces.getAll())
+    /** Recently-picked places, shown before the user types anything. */
+    val recents: StateFlow<List<GeocodePlace>> = _recents.asStateFlow()
+
     init {
         _query
             .debounce(DEBOUNCE_MS)
             .distinctUntilChanged()
             .onEach { text -> fetchPlaces(text) }
             .launchIn(viewModelScope)
+    }
+
+    /** Records a picked place for next time — skips the "current location" sentinel, which is stale by then. */
+    fun recordPick(place: GeocodePlace) {
+        if (place.id == CURRENT_LOCATION_ID) return
+        recentPlaces.record(place)
+        _recents.value = recentPlaces.getAll()
     }
 
     fun setQuery(text: String) {
@@ -78,5 +91,6 @@ class SearchLocationViewModel(
 
     companion object {
         private const val DEBOUNCE_MS = 300L
+        const val CURRENT_LOCATION_ID = "current_location"
     }
 }
