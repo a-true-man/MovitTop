@@ -18,7 +18,14 @@ import iam699030.gmail.movitop.R
  * into one long vertical list.
  */
 class DirectModeAdapter(
-    private val onRouteSelected: (RouteOption) -> Unit
+    private val onRouteSelected: (RouteOption) -> Unit,
+    // Horizontal RecyclerViews have no natural "leave the row" edge for a
+    // D-Pad the way a vertical list's last item does — without this, DOWN
+    // from any card here would fall through to Android's generic spatial
+    // focus search, which is unreliable across a mixed horizontal/vertical
+    // layout. Returning true means it was handled (exited the row);
+    // false lets the key propagate normally (e.g. no transit list to enter).
+    private val onDownPressed: () -> Boolean = { false }
 ) : ListAdapter<RouteOption, DirectModeAdapter.ViewHolder>(DIFF) {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -49,13 +56,14 @@ class DirectModeAdapter(
 
         holder.itemView.setOnClickListener { onRouteSelected(option) }
         holder.itemView.setOnKeyListener { _, keyCode, event ->
-            if (event.action == KeyEvent.ACTION_UP &&
-                (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
-            ) {
-                onRouteSelected(option)
-                true
-            } else {
-                false
+            if (event.action != KeyEvent.ACTION_UP) return@setOnKeyListener false
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    onRouteSelected(option)
+                    true
+                }
+                KeyEvent.KEYCODE_DPAD_DOWN -> onDownPressed()
+                else -> false
             }
         }
     }

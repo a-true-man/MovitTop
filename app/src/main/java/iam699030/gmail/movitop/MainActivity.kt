@@ -95,7 +95,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
 
     private val routeAdapter = RouteAdapter { option -> viewModel.selectRoute(option) }
-    private val directModeAdapter = DirectModeAdapter { option -> viewModel.selectRoute(option) }
+    private val directModeAdapter = DirectModeAdapter(
+        onRouteSelected = { option -> viewModel.selectRoute(option) },
+        onDownPressed = { focusFirstTransitOptionIfAny() }
+    )
     private val stepAdapter = RouteStepAdapter()
 
     private val routeOverlays = mutableListOf<Polyline>()
@@ -663,6 +666,15 @@ class MainActivity : AppCompatActivity() {
             firstItem?.requestFocus()
             updateFocusChain()
         }
+    }
+
+    /** DPAD_DOWN from the last row of the horizontal direct-modes carousel (see DirectModeAdapter). */
+    private fun focusFirstTransitOptionIfAny(): Boolean {
+        if (resultsRecycler.visibility != View.VISIBLE || routeAdapter.itemCount == 0) return false
+        val firstItem = resultsRecycler.findViewHolderForAdapterPosition(0)?.itemView
+            ?: resultsRecycler.layoutManager?.findViewByPosition(0)
+        firstItem?.requestFocus() ?: return false
+        return true
     }
 
     private fun formatDuration(minutes: Int): String =
