@@ -4,17 +4,31 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 import iam699030.gmail.movitop.R
 
-class LineDepartureAdapter : ListAdapter<LineDeparture, LineDepartureAdapter.ViewHolder>(DIFF) {
+/** @param onToggleFavorite called with a departure's [LineDeparture.routeShortName] when its star is tapped. */
+class LineDepartureAdapter(
+    private val onToggleFavorite: (String) -> Unit
+) : ListAdapter<LineDeparture, LineDepartureAdapter.ViewHolder>(DIFF) {
+
+    private var favoriteLines: Set<String> = emptySet()
+
+    /** Refreshes which rows show as starred without touching the departure list itself. */
+    fun setFavorites(lines: Collection<String>) {
+        favoriteLines = lines.toSet()
+        notifyDataSetChanged()
+    }
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val time: TextView = view.findViewById(R.id.departureTime)
         val headsign: TextView = view.findViewById(R.id.departureHeadsign)
         val fromStop: TextView = view.findViewById(R.id.departureFromStop)
+        val starButton: MaterialButton = view.findViewById(R.id.favoriteStarButton)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -25,11 +39,24 @@ class LineDepartureAdapter : ListAdapter<LineDeparture, LineDepartureAdapter.Vie
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
+        val context = holder.itemView.context
         holder.time.text = formatTime(item.departureTime)
         holder.headsign.text = item.headsign.ifBlank { item.routeLongName }
-        holder.fromStop.text = holder.itemView.context.getString(
+        holder.fromStop.text = context.getString(
             R.string.line_times_from_stop, item.firstStopName
         )
+
+        val isFavorite = item.routeShortName in favoriteLines
+        holder.starButton.iconTint = android.content.res.ColorStateList.valueOf(
+            ContextCompat.getColor(
+                context,
+                if (isFavorite) R.color.movitop_star_active else R.color.movitop_text_secondary
+            )
+        )
+        holder.starButton.contentDescription = context.getString(
+            if (isFavorite) R.string.favorite_star_remove_description else R.string.favorite_star_add_description
+        )
+        holder.starButton.setOnClickListener { onToggleFavorite(item.routeShortName) }
     }
 
     /** GTFS allows "25:10:00" for past-midnight trips — normalize to "01:10". */

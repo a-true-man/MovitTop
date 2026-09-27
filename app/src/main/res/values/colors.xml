@@ -27,4 +27,7 @@
     <color name="movitop_input_stroke">#D5DCE8</color>
     <color name="movitop_chip_bg">#EAEEF6</color>
     <color name="movitop_chip_text">#2D6CDF</color>
+
+    <!-- Saved-lines star -->
+    <color name="movitop_star_active">#F4A300</color>
 </resources>

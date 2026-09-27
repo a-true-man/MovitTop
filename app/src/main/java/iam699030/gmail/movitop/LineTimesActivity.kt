@@ -29,12 +29,13 @@ import java.util.Locale
 class LineTimesActivity : AppCompatActivity() {
 
     private val viewModel: LineTimesViewModel by viewModels()
-    private val adapter = LineDepartureAdapter()
+    private val adapter = LineDepartureAdapter { line -> viewModel.toggleFavorite(line) }
 
     private lateinit var queryInput: EditText
     private lateinit var dateButton: MaterialButton
     private lateinit var recycler: RecyclerView
     private lateinit var emptyText: TextView
+    private lateinit var favoritesHeader: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +45,7 @@ class LineTimesActivity : AppCompatActivity() {
         dateButton = findViewById(R.id.lineDateButton)
         recycler = findViewById(R.id.departuresRecycler)
         emptyText = findViewById(R.id.lineTimesEmptyText)
+        favoritesHeader = findViewById(R.id.lineTimesFavoritesHeader)
 
         recycler.layoutManager = LinearLayoutManager(this)
         recycler.adapter = adapter
@@ -64,6 +66,7 @@ class LineTimesActivity : AppCompatActivity() {
                     dateButton.text = SimpleDateFormat("dd/MM", Locale.getDefault())
                         .format(state.dateEpochMillis)
                     adapter.submitList(state.results)
+                    adapter.setFavorites(state.favoriteLines)
 
                     val showEmpty = when {
                         !state.isAvailable -> true
@@ -71,12 +74,14 @@ class LineTimesActivity : AppCompatActivity() {
                         else -> false
                     }
                     emptyText.visibility = if (showEmpty) View.VISIBLE else View.GONE
-                    emptyText.text = if (!state.isAvailable) {
-                        getString(R.string.line_times_unavailable)
-                    } else {
-                        getString(R.string.line_times_no_results)
+                    emptyText.text = when {
+                        !state.isAvailable -> getString(R.string.line_times_unavailable)
+                        state.showingFavorites -> getString(R.string.line_times_favorites_empty)
+                        else -> getString(R.string.line_times_no_results)
                     }
                     recycler.visibility = if (state.results.isEmpty()) View.GONE else View.VISIBLE
+                    favoritesHeader.visibility =
+                        if (state.showingFavorites && state.results.isNotEmpty()) View.VISIBLE else View.GONE
                 }
             }
         }
