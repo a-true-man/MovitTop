@@ -28,6 +28,7 @@ import kotlin.math.roundToInt
 private const val MAX_WALK_MINUTES = 180
 private const val MAX_BIKE_MINUTES = 240
 private const val MAX_TRANSIT_OPTIONS = 4
+private const val BADGE_LABEL_MAX_CHARS = 10
 
 /**
  * Talks to the MOTIS HTTP server started on-device by [iam699030.gmail.movitop.MotisForegroundService]
@@ -107,6 +108,7 @@ class RealMotisRepository(
             .forEachIndexed { i, itinerary ->
                 val id = "transit-$i"
                 itineraryCache[id] = itinerary
+                val transitLegs = itinerary.legs.orEmpty().filter { isTransitLeg(it) }
                 options += RouteOption(
                     id = id,
                     mode = TransportMode.TRANSIT,
@@ -114,7 +116,12 @@ class RealMotisRepository(
                     priceText = null,
                     subtitle = transitSubtitle(itinerary),
                     departTimeText = IsoTime.toClockText(itinerary.startTime),
-                    arriveTimeText = IsoTime.toClockText(itinerary.endTime)
+                    arriveTimeText = IsoTime.toClockText(itinerary.endTime),
+                    departInMinutes = minutesUntil(itinerary.startTime),
+                    transitBadges = transitLegs.map { TransitLineBadge(badgeLabel(it), LegColors.forLeg(it)) },
+                    viaStopText = transitLegs.firstOrNull()?.from?.name?.let {
+                        getString(R.string.route_option_via_stop, it)
+                    }
                 )
             }
 
@@ -133,11 +140,17 @@ class RealMotisRepository(
                 // intentionally left uncapped — a multi-hour drive is normal.
                 "WALK" -> if (minutes <= MAX_WALK_MINUTES) {
                     itineraryCache["direct-WALK"] = itinerary
-                    options += RouteOption("direct-WALK", TransportMode.WALKING, minutes, null, departTimeText = depart, arriveTimeText = arrive)
+                    options += RouteOption(
+                        "direct-WALK", TransportMode.WALKING, minutes, null,
+                        departTimeText = depart, arriveTimeText = arrive, distanceText = distanceText(meters)
+                    )
                 }
                 "BIKE" -> if (minutes <= MAX_BIKE_MINUTES) {
                     itineraryCache["direct-BIKE"] = itinerary
-                    options += RouteOption("direct-BIKE", TransportMode.BIKE, minutes, null, departTimeText = depart, arriveTimeText = arrive)
+                    options += RouteOption(
+                        "direct-BIKE", TransportMode.BIKE, minutes, null,
+                        departTimeText = depart, arriveTimeText = arrive, distanceText = distanceText(meters)
+                    )
                 }
                 "CAR" -> {
                     itineraryCache["direct-DRIVER"] = itinerary
@@ -206,17 +219,20 @@ class RealMotisRepository(
         val departIso = stopPlace.departure ?: stopPlace.arrival ?: return null
         val epoch = IsoTime.toEpochMillis(departIso) ?: return null
         val stopPoint = GeoPoint(lat, lon)
+        val shortName = routeShortName?.takeIf { it.isNotBlank() }
+        val headsignText = headsign?.takeIf { it.isNotBlank() }
+        val label = shortName ?: routeLongName?.takeIf { it.isNotBlank() } ?: mode.orEmpty()
         return NearbyDeparture(
-            routeShortName = routeShortName ?: routeLongName ?: mode.orEmpty(),
-            headsign = headsign ?: routeLongName.orEmpty(),
+            routeShortName = label,
+            headsign = headsignText ?: routeLongName.orEmpty(),
             agencyName = agencyName,
             stopName = stopPlace.name ?: "",
             stopPoint = stopPoint,
             departTimeText = IsoTime.toClockText(departIso) ?: "",
             minutesUntil = ((epoch - System.currentTimeMillis()) / 60_000.0).roundToInt().toLong().coerceAtLeast(0L),
             distanceMeters = haversineMeters(origin, stopPoint),
-            colorArgb = routeColor?.let { LegColors.fallbackFor(it) }
-                ?: LegColors.fallbackFor(routeShortName ?: headsign ?: mode.orEmpty())
+            colorArgb = routeColor?.takeIf { it.isNotBlank() }?.let { LegColors.fallbackFor(it) }
+                ?: LegColors.fallbackFor(label)
         )
     }
 
@@ -224,13 +240,52 @@ class RealMotisRepository(
     private suspend fun resolvePlace(place: String, coord: GeoPoint?, placeContext: String?): String =
         coord?.let { "${it.lat},${it.lon}" } ?: geocoder.resolve(place, placeContext)
 
+    private fun isTransitLeg(leg: LegDto) =
+        leg.mode != null && leg.mode != "WALK" && leg.mode != "BIKE" && leg.mode != "CAR"
+
+    /**
+     * A line's display name: [LegDto.routeShortName] when there's a real one,
+     * else headsign, else the raw mode. MOTIS reports a *blank* (not absent)
+     * routeShortName for some lines — `?:` alone doesn't fall through an
+     * empty string, so this explicitly does.
+     */
+    private fun lineLabel(leg: LegDto): String =
+        leg.routeShortName?.takeIf { it.isNotBlank() }
+            ?: leg.headsign?.takeIf { it.isNotBlank() }
+            ?: leg.mode.orEmpty()
+
+    /**
+     * [lineLabel], capped for a route-summary card's badge (see [RouteAdapter]).
+     * Most lines have a compact routeShortName (e.g. "480"), but a few —
+     * commuter rail especially — report a full corridor description there
+     * instead (e.g. "Modiin Center-Modiin Maccabim Reut<->Netanya"), same as
+     * the headsign/mode fallback for lines with no short name at all; either
+     * way, cap it so the badge can't blow up.
+     */
+    private fun badgeLabel(leg: LegDto): String {
+        val label = lineLabel(leg)
+        return if (label.length > BADGE_LABEL_MAX_CHARS) {
+            label.take(BADGE_LABEL_MAX_CHARS) + "…"
+        } else {
+            label
+        }
+    }
+
     /** e.g. "480" or "142 + 5" — lets the UI tell apart several TRANSIT options at a glance. */
     private fun transitSubtitle(itinerary: ItineraryDto): String? {
-        val lines = itinerary.legs.orEmpty()
-            .filter { it.mode != null && it.mode != "WALK" && it.mode != "BIKE" && it.mode != "CAR" }
-            .mapNotNull { it.routeShortName ?: it.headsign }
+        val lines = itinerary.legs.orEmpty().filter { isTransitLeg(it) }.map { lineLabel(it) }
         return lines.takeIf { it.isNotEmpty() }?.joinToString(" + ")
     }
+
+    /** Minutes from now until [iso], clamped to 0 (never negative) — null if unparseable. */
+    private fun minutesUntil(iso: String?): Long? {
+        val epoch = IsoTime.toEpochMillis(iso) ?: return null
+        return ((epoch - System.currentTimeMillis()) / 60_000.0).roundToInt().toLong().coerceAtLeast(0L)
+    }
+
+    private fun distanceText(meters: Double): String =
+        if (meters >= 1000) getString(R.string.distance_km, meters / 1000.0)
+        else getString(R.string.distance_meters, meters.roundToInt())
 
     private fun buildRouteStep(leg: LegDto): RouteStep = RouteStep(
         title = stepTitle(leg),
@@ -307,9 +362,10 @@ class RealMotisRepository(
     }
 
     private fun routeLabelFor(leg: LegDto): String {
-        val line = leg.routeShortName ?: leg.headsign ?: leg.mode.orEmpty()
-        return if (leg.headsign != null) {
-            getString(R.string.route_label_with_headsign, line, leg.headsign)
+        val line = lineLabel(leg)
+        val headsign = leg.headsign?.takeIf { it.isNotBlank() }
+        return if (headsign != null) {
+            getString(R.string.route_label_with_headsign, line, headsign)
         } else {
             getString(R.string.route_label_plain, line)
         }
@@ -353,10 +409,7 @@ class RealMotisRepository(
             "WALK" -> getString(R.string.route_step_walk_to, destination)
             "BIKE" -> getString(R.string.route_step_bike_to, destination)
             "CAR" -> getString(R.string.route_step_drive_to, destination)
-            else -> {
-                val line = leg.routeShortName ?: leg.headsign ?: leg.mode.orEmpty()
-                getString(R.string.route_step_transit_to, line, destination)
-            }
+            else -> getString(R.string.route_step_transit_to, lineLabel(leg), destination)
         }
     }
 

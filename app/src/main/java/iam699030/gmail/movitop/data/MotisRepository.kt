@@ -31,6 +31,13 @@ enum class TransportMode(
  * same mode and duration ballpark.
  * @param departTimeText estimated clock time this option leaves ("14:20"), null when unknown.
  * @param arriveTimeText estimated clock time this option gets in, null when unknown.
+ * @param departInMinutes minutes from now until departure, null when unknown — the
+ * "leaves in X min" countdown shown on transit cards.
+ * @param distanceText already-formatted walk/bike distance (e.g. "1.3 ק״מ"), null for
+ * modes where [priceText] is shown instead.
+ * @param transitBadges the line(s) ridden, in order, for a [TransportMode.TRANSIT] option —
+ * empty for every other mode.
+ * @param viaStopText the first boarding stop's name, shown under a transit option's line badges.
  */
 data class RouteOption(
     val id: String,
@@ -39,7 +46,17 @@ data class RouteOption(
     val priceText: String?,
     val subtitle: String? = null,
     val departTimeText: String? = null,
-    val arriveTimeText: String? = null
+    val arriveTimeText: String? = null,
+    val departInMinutes: Long? = null,
+    val distanceText: String? = null,
+    val transitBadges: List<TransitLineBadge> = emptyList(),
+    val viaStopText: String? = null
+)
+
+/** One line-number chip on a transit [RouteOption] card, colored like its map leg. */
+data class TransitLineBadge(
+    val label: String,
+    val colorArgb: Int
 )
 
 /**

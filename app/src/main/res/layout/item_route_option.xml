@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- One TRANSIT suggestion card — duration, the chain of lines ridden (see
+     TransitRouteAdapter, which builds the badge row programmatically since
+     the number of transfers varies), then a live "leaves in X min" + first
+     stop line. -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -17,51 +21,30 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:minHeight="68dp"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:paddingHorizontal="16dp"
         android:paddingVertical="14dp">
 
-        <ImageView
-            android:id="@+id/modeIcon"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="@drawable/bg_mode_icon"
-            android:importantForAccessibility="no"
-            android:padding="6dp"
-            tools:src="@drawable/ic_mode_transit" />
-
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/modeLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/movitop_text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                tools:text="תחבורה ציבורית" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/modeDuration"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:textColor="@color/movitop_text_secondary"
-                android:textSize="13sp"
+                android:layout_weight="1"
+                android:textColor="@color/movitop_text_primary"
+                android:textSize="19sp"
+                android:textStyle="bold"
                 tools:text="45 דק׳" />
 
             <TextView
                 android:id="@+id/modeTimeRange"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
                 android:textColor="@color/movitop_text_secondary"
                 android:textSize="12sp"
                 android:visibility="gone"
@@ -70,15 +53,54 @@
 
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/modePrice"
-            android:layout_width="wrap_content"
+        <!-- Scrolls instead of clipping when a trip has enough transfers that
+             the badge chain would otherwise overflow the card. -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:textColor="@color/movitop_primary"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            tools:text="30₪" />
+            android:layout_marginTop="10dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/lineBadgeRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal" />
+
+        </HorizontalScrollView>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/departsIn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/movitop_departs_soon"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:text="יוצא בעוד 7 דק׳"
+                tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/viaStop"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/movitop_text_secondary"
+                android:textSize="13sp"
+                tools:text="· מתחנת יגאל אלון" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

@@ -32,9 +32,11 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import iam699030.gmail.movitop.MainViewModel.RoutingState
+import iam699030.gmail.movitop.data.DirectModeAdapter
 import iam699030.gmail.movitop.data.GeoPoint
 import iam699030.gmail.movitop.data.MapLeg
 import iam699030.gmail.movitop.data.RouteAdapter
+import iam699030.gmail.movitop.data.TransportMode
 import iam699030.gmail.movitop.data.RouteStepAdapter
 import iam699030.gmail.movitop.data.TripTime
 import iam699030.gmail.movitop.map.MapThemeHelper
@@ -71,6 +73,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tripTimeRow: TextView
     private lateinit var searchProgress: ProgressBar
     private lateinit var resultsRecycler: RecyclerView
+    private lateinit var directModesRecycler: RecyclerView
+    private lateinit var directModesTitle: TextView
+    private lateinit var transitOptionsTitle: TextView
     private lateinit var detailsRecycler: RecyclerView
     private lateinit var summaryContainer: LinearLayout
     private lateinit var detailsContainer: LinearLayout
@@ -90,6 +95,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
 
     private val routeAdapter = RouteAdapter { option -> viewModel.selectRoute(option) }
+    private val directModeAdapter = DirectModeAdapter { option -> viewModel.selectRoute(option) }
     private val stepAdapter = RouteStepAdapter()
 
     private val routeOverlays = mutableListOf<Polyline>()
@@ -162,6 +168,9 @@ class MainActivity : AppCompatActivity() {
         tripTimeRow.setOnClickListener { showTripTimeDialog() }
         searchProgress = findViewById(R.id.searchProgress)
         resultsRecycler = findViewById(R.id.resultsRecycler)
+        directModesRecycler = findViewById(R.id.directModesRecycler)
+        directModesTitle = findViewById(R.id.directModesTitle)
+        transitOptionsTitle = findViewById(R.id.transitOptionsTitle)
         detailsRecycler = findViewById(R.id.detailsRecycler)
         summaryContainer = findViewById(R.id.summaryContainer)
         detailsContainer = findViewById(R.id.detailsContainer)
@@ -327,6 +336,8 @@ class MainActivity : AppCompatActivity() {
         val sheet = findViewById<NestedScrollView>(R.id.resultsBottomSheet)
         resultsRecycler.layoutManager = LinearLayoutManager(this)
         resultsRecycler.adapter = routeAdapter
+        directModesRecycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        directModesRecycler.adapter = directModeAdapter
         detailsRecycler.layoutManager = LinearLayoutManager(this)
         detailsRecycler.adapter = stepAdapter
 
@@ -544,18 +555,31 @@ class MainActivity : AppCompatActivity() {
                 }
                 launch {
                     viewModel.routes.collect { routes ->
+                        // Direct modes (walk/bike/driver/taxi) render as a
+                        // horizontal row above the transit list, matching how
+                        // Moovit separates them instead of one mixed list.
+                        val all = routes.orEmpty()
+                        val direct = all.filter { it.mode != TransportMode.TRANSIT }
+                        val transit = all.filter { it.mode == TransportMode.TRANSIT }
+
+                        directModesTitle.visibility = if (direct.isNotEmpty()) View.VISIBLE else View.GONE
+                        directModesRecycler.visibility = if (direct.isNotEmpty()) View.VISIBLE else View.GONE
+                        transitOptionsTitle.visibility = if (transit.isNotEmpty()) View.VISIBLE else View.GONE
+
                         // ListAdapter.submitList diffs on a background thread —
                         // expanding the sheet right after calling it (as this
                         // used to) raced the RecyclerView actually being
                         // populated, so BottomSheetBehavior's wrap_content
                         // measurement could compute against zero items and the
                         // sheet would render as an empty sliver. Only expand
-                        // once the commit callback confirms the list landed.
-                        routeAdapter.submitList(routes.orEmpty()) {
-                            if (routes != null) {
-                                bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
-                                focusFirstChild(resultsRecycler)
-                                updateFocusChain()
+                        // once both commit callbacks confirm their list landed.
+                        directModeAdapter.submitList(direct) {
+                            routeAdapter.submitList(transit) {
+                                if (routes != null) {
+                                    bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+                                    focusFirstChild(if (transit.isNotEmpty()) resultsRecycler else directModesRecycler)
+                                    updateFocusChain()
+                                }
                             }
                         }
                     }
@@ -609,10 +633,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateFocusChain() {
         val sheetExpanded = bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED
-        val activeRecycler = if (detailsContainer.visibility == View.VISIBLE) {
-            detailsRecycler
-        } else {
-            resultsRecycler
+        val activeRecycler = when {
+            detailsContainer.visibility == View.VISIBLE -> detailsRecycler
+            resultsRecycler.visibility == View.VISIBLE -> resultsRecycler
+            else -> directModesRecycler
         }
 
         if (sheetExpanded) {

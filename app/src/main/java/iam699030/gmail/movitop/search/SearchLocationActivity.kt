@@ -26,6 +26,7 @@ import com.google.android.material.snackbar.Snackbar
 import iam699030.gmail.movitop.R
 import iam699030.gmail.movitop.SimpleTextWatcher
 import iam699030.gmail.movitop.data.GeocodePlace
+import iam699030.gmail.movitop.data.PinnedSlot
 import iam699030.gmail.movitop.nav.LocationTracker
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -42,6 +43,10 @@ class SearchLocationActivity : AppCompatActivity() {
     private lateinit var currentLocationRow: View
     private lateinit var currentLocationProgress: ProgressBar
     private lateinit var recentPlacesHeader: TextView
+    private lateinit var homeRow: View
+    private lateinit var workRow: View
+    private lateinit var homeText: TextView
+    private lateinit var workText: TextView
 
     private val resultAdapter = GeocodeResultAdapter { place -> returnPlace(place) }
 
@@ -70,6 +75,10 @@ class SearchLocationActivity : AppCompatActivity() {
         currentLocationRow = findViewById(R.id.currentLocationRow)
         currentLocationProgress = findViewById(R.id.currentLocationProgress)
         recentPlacesHeader = findViewById(R.id.recentPlacesHeader)
+        homeRow = findViewById(R.id.homeRow)
+        workRow = findViewById(R.id.workRow)
+        homeText = findViewById(R.id.homeText)
+        workText = findViewById(R.id.workText)
 
         currentLocationRow.setOnClickListener { onCurrentLocationSelected() }
         currentLocationRow.setOnKeyListener { _, keyCode, event ->
@@ -82,6 +91,9 @@ class SearchLocationActivity : AppCompatActivity() {
                 false
             }
         }
+
+        setupPinnedRow(homeRow, PinnedSlot.HOME) { viewModel.homePlace.value }
+        setupPinnedRow(workRow, PinnedSlot.WORK) { viewModel.workPlace.value }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.searchRoot)) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -135,8 +147,75 @@ class SearchLocationActivity : AppCompatActivity() {
                         searchProgress.visibility = if (searching) View.VISIBLE else View.GONE
                     }
                 }
+                launch {
+                    viewModel.homePlace.collect { place ->
+                        homeText.text = place?.name ?: getString(R.string.pinned_set_home)
+                    }
+                }
+                launch {
+                    viewModel.workPlace.collect { place ->
+                        workText.text = place?.name ?: getString(R.string.pinned_set_work)
+                    }
+                }
             }
         }
+    }
+
+    /**
+     * Wires tap (use if set, else start picking one) and long-press (always
+     * re-pick) for a pinned-place row — for touch that's [View.OnClickListener]
+     * / [View.OnLongClickListener], but a plain [View.OnKeyListener] on
+     * DPAD_CENTER/ENTER only ever sees discrete key events, not gesture
+     * timing, so a D-pad hold needs its own long-press detection here. Two
+     * signals, either one sufficient: a genuinely held hardware key resends
+     * ACTION_DOWN with an increasing repeatCount (real D-pad hardware), while
+     * some soft/virtual sources instead mark one redelivered ACTION_DOWN with
+     * [KeyEvent.FLAG_LONG_PRESS] directly (notably `adb shell input keyevent
+     * --longpress`, used to verify this without physical hardware). Either
+     * way this suppresses the eventual ACTION_UP's short-press action.
+     */
+    private fun setupPinnedRow(row: View, slot: PinnedSlot, current: () -> GeocodePlace?) {
+        val onSelect = {
+            val place = current()
+            if (place != null) returnPlace(place) else enterPendingPinMode(slot)
+        }
+        row.setOnClickListener { onSelect() }
+        row.setOnLongClickListener { enterPendingPinMode(slot); true }
+
+        var longPressTriggered = false
+        row.setOnKeyListener { _, keyCode, event ->
+            if (keyCode != KeyEvent.KEYCODE_DPAD_CENTER && keyCode != KeyEvent.KEYCODE_ENTER) {
+                return@setOnKeyListener false
+            }
+            val isLongPress = event.repeatCount >= LONG_PRESS_REPEAT_COUNT ||
+                (event.flags and KeyEvent.FLAG_LONG_PRESS) != 0
+            when (event.action) {
+                KeyEvent.ACTION_DOWN -> {
+                    if (event.repeatCount == 0 && !isLongPress) {
+                        longPressTriggered = false
+                    } else if (isLongPress && !longPressTriggered) {
+                        longPressTriggered = true
+                        enterPendingPinMode(slot)
+                    }
+                    true
+                }
+                KeyEvent.ACTION_UP -> {
+                    if (!longPressTriggered) onSelect()
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun enterPendingPinMode(slot: PinnedSlot) {
+        viewModel.pendingPinnedSlot = slot
+        val prompt = when (slot) {
+            PinnedSlot.HOME -> R.string.pinned_pick_prompt_home
+            PinnedSlot.WORK -> R.string.pinned_pick_prompt_work
+        }
+        Snackbar.make(searchInput, prompt, Snackbar.LENGTH_LONG).show()
+        searchInput.requestFocus()
     }
 
     private fun renderList() {
@@ -191,6 +270,10 @@ class SearchLocationActivity : AppCompatActivity() {
 
     private fun returnPlace(place: GeocodePlace) {
         viewModel.recordPick(place)
+        viewModel.pendingPinnedSlot?.let { slot ->
+            viewModel.pinPlace(slot, place)
+            viewModel.pendingPinnedSlot = null
+        }
         setResult(
             RESULT_OK,
             Intent().apply {
@@ -222,5 +305,8 @@ class SearchLocationActivity : AppCompatActivity() {
 
         const val FIELD_ORIGIN = "origin"
         const val FIELD_DESTINATION = "destination"
+
+        /** D-Pad-held-key repeats needed before a pinned row treats it as a long-press. */
+        private const val LONG_PRESS_REPEAT_COUNT = 3
     }
 }

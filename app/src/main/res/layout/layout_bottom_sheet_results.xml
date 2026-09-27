@@ -32,7 +32,7 @@
             android:layout_marginBottom="8dp"
             android:background="@drawable/bg_drag_handle" />
 
-        <!-- Pane 1: 5-option summary -->
+        <!-- Pane 1: direct-modes row + transit suggestions -->
         <LinearLayout
             android:id="@+id/summaryContainer"
             android:layout_width="match_parent"
@@ -40,16 +40,42 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/resultsTitle"
+                android:id="@+id/directModesTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="16dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="8dp"
-                android:text="@string/results_title"
-                android:textColor="@color/movitop_text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:paddingBottom="6dp"
+                android:text="@string/direct_modes_title"
+                android:textColor="@color/movitop_text_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/directModesRecycler"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:descendantFocusability="afterDescendants"
+                android:nestedScrollingEnabled="false"
+                android:orientation="horizontal"
+                android:paddingHorizontal="7dp"
+                android:paddingBottom="10dp"
+                android:visibility="gone"
+                tools:listitem="@layout/item_direct_mode"
+                tools:orientation="horizontal" />
+
+            <TextView
+                android:id="@+id/transitOptionsTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="16dp"
+                android:paddingBottom="6dp"
+                android:text="@string/transit_options_title"
+                android:textColor="@color/movitop_text_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/resultsRecycler"

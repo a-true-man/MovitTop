@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One line-number chip inside a transit route card's badge chain. Inflated
+     programmatically (variable count per option) — see TransitRouteAdapter. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_line_badge"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="4dp">
+
+    <ImageView
+        android:id="@+id/badgeIcon"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/ic_mode_transit" />
+
+    <TextView
+        android:id="@+id/badgeLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        tools:text="480" />
+
+</LinearLayout>

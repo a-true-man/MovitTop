@@ -1,31 +1,34 @@
 package iam699030.gmail.movitop.data
 
+import android.graphics.drawable.GradientDrawable
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import iam699030.gmail.movitop.R
 
 /**
- * Renders the [RouteOption] summaries inside the results bottom sheet. Several
- * entries can share the same [TransportMode] (e.g. two TRANSIT options via
- * different lines) — [RouteOption.subtitle] is what tells them apart.
+ * Renders TRANSIT [RouteOption] summaries — duration, the chain of lines
+ * ridden (colored like their map legs, see [LegColors]), and a live "leaves
+ * in X min" countdown. Direct modes (walk/bike/driver/taxi) render in the
+ * separate horizontal [DirectModeAdapter] row instead.
  */
 class RouteAdapter(
     private val onRouteSelected: (RouteOption) -> Unit
 ) : ListAdapter<RouteOption, RouteAdapter.RouteViewHolder>(DIFF) {
 
     class RouteViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val icon: ImageView = view.findViewById(R.id.modeIcon)
-        val label: TextView = view.findViewById(R.id.modeLabel)
         val duration: TextView = view.findViewById(R.id.modeDuration)
-        val price: TextView = view.findViewById(R.id.modePrice)
         val timeRange: TextView = view.findViewById(R.id.modeTimeRange)
+        val badgeRow: ViewGroup = view.findViewById(R.id.lineBadgeRow)
+        val departsIn: TextView = view.findViewById(R.id.departsIn)
+        val viaStop: TextView = view.findViewById(R.id.viaStop)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RouteViewHolder {
@@ -38,14 +41,7 @@ class RouteAdapter(
         val option = getItem(position)
         val context = holder.itemView.context
 
-        holder.icon.setImageResource(option.mode.iconRes)
-        holder.label.text = context.getString(option.mode.labelRes)
-        val durationText = formatDuration(holder, option.durationMinutes)
-        holder.duration.text = if (option.subtitle.isNullOrEmpty()) {
-            durationText
-        } else {
-            "${option.subtitle} · $durationText"
-        }
+        holder.duration.text = formatDuration(context, option.durationMinutes)
         holder.itemView.setOnClickListener { onRouteSelected(option) }
         holder.itemView.setOnKeyListener { _, keyCode, event ->
             if (event.action == KeyEvent.ACTION_UP &&
@@ -58,13 +54,6 @@ class RouteAdapter(
             }
         }
 
-        if (option.priceText.isNullOrEmpty()) {
-            holder.price.visibility = View.GONE
-        } else {
-            holder.price.visibility = View.VISIBLE
-            holder.price.text = option.priceText
-        }
-
         val depart = option.departTimeText
         val arrive = option.arriveTimeText
         if (depart != null && arrive != null) {
@@ -73,11 +62,59 @@ class RouteAdapter(
         } else {
             holder.timeRange.visibility = View.GONE
         }
+
+        bindBadges(holder.badgeRow, option.transitBadges)
+
+        val minutes = option.departInMinutes
+        if (minutes != null) {
+            holder.departsIn.visibility = View.VISIBLE
+            holder.departsIn.text = if (minutes <= 0) {
+                context.getString(R.string.nearby_departing_now)
+            } else {
+                context.getString(R.string.nearby_minutes_until, minutes)
+            }
+        } else {
+            holder.departsIn.visibility = View.GONE
+        }
+
+        if (option.viaStopText.isNullOrEmpty()) {
+            holder.viaStop.visibility = View.GONE
+        } else {
+            holder.viaStop.visibility = View.VISIBLE
+            holder.viaStop.text = if (minutes != null) "· ${option.viaStopText}" else option.viaStopText
+        }
     }
 
-    private fun formatDuration(holder: RouteViewHolder, minutes: Int): String {
-        val context = holder.itemView.context
-        return if (minutes >= 60) {
+    /** Rebuilds the badge chain — a variable-length chip-per-line list, so it's built, not bound. */
+    private fun bindBadges(row: ViewGroup, badges: List<TransitLineBadge>) {
+        row.removeAllViews()
+        val inflater = LayoutInflater.from(row.context)
+        badges.forEachIndexed { index, badge ->
+            if (index > 0) {
+                val separator = TextView(row.context).apply {
+                    text = ">"
+                    textSize = 13f
+                    setTextColor(ContextCompat.getColor(row.context, R.color.movitop_text_secondary))
+                    setPadding(dp(row, 4f), 0, dp(row, 4f), 0)
+                }
+                row.addView(separator)
+            }
+            val chip = inflater.inflate(R.layout.item_line_badge_chip, row, false)
+            val icon = chip.findViewById<ImageView>(R.id.badgeIcon)
+            val label = chip.findViewById<TextView>(R.id.badgeLabel)
+            label.text = badge.label
+            label.setTextColor(badge.colorArgb)
+            icon.setColorFilter(badge.colorArgb)
+            (chip.background.mutate() as? GradientDrawable)?.setStroke(dp(row, 1.5f), badge.colorArgb)
+            row.addView(chip)
+        }
+    }
+
+    private fun dp(view: View, value: Float): Int =
+        (value * view.context.resources.displayMetrics.density).toInt()
+
+    private fun formatDuration(context: android.content.Context, minutes: Int): String =
+        if (minutes >= 60) {
             val hours = minutes / 60.0
             // "1.5" but "1" instead of "1.0"
             val hoursText = if (hours % 1.0 == 0.0) {
@@ -89,7 +126,6 @@ class RouteAdapter(
         } else {
             context.getString(R.string.duration_minutes, minutes)
         }
-    }
 
     companion object {
         private val DIFF = object : DiffUtil.ItemCallback<RouteOption>() {

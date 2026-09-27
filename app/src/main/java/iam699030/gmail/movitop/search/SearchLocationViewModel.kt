@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import iam699030.gmail.movitop.R
 import iam699030.gmail.movitop.data.GeocodePlace
 import iam699030.gmail.movitop.data.MotisRepository
+import iam699030.gmail.movitop.data.PinnedPlacesRepository
+import iam699030.gmail.movitop.data.PinnedSlot
 import iam699030.gmail.movitop.data.PlaceSuggestions
 import iam699030.gmail.movitop.data.RealMotisRepository
 import iam699030.gmail.movitop.data.RecentPlacesRepository
@@ -27,6 +29,7 @@ class SearchLocationViewModel(
 
     private val repository: MotisRepository = RealMotisRepository(application)
     private val recentPlaces = RecentPlacesRepository(application)
+    private val pinnedPlaces = PinnedPlacesRepository(application)
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
@@ -40,6 +43,23 @@ class SearchLocationViewModel(
     private val _recents = MutableStateFlow(recentPlaces.getAll())
     /** Recently-picked places, shown before the user types anything. */
     val recents: StateFlow<List<GeocodePlace>> = _recents.asStateFlow()
+
+    private val _homePlace = MutableStateFlow(pinnedPlaces.get(PinnedSlot.HOME))
+    val homePlace: StateFlow<GeocodePlace?> = _homePlace.asStateFlow()
+
+    private val _workPlace = MutableStateFlow(pinnedPlaces.get(PinnedSlot.WORK))
+    val workPlace: StateFlow<GeocodePlace?> = _workPlace.asStateFlow()
+
+    /** Which slot the *next* picked place should be saved into, if any — see [SearchLocationActivity]. */
+    var pendingPinnedSlot: PinnedSlot? = null
+
+    fun pinPlace(slot: PinnedSlot, place: GeocodePlace) {
+        pinnedPlaces.set(slot, place)
+        when (slot) {
+            PinnedSlot.HOME -> _homePlace.value = place
+            PinnedSlot.WORK -> _workPlace.value = place
+        }
+    }
 
     init {
         _query

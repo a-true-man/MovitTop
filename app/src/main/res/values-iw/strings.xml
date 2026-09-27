@@ -19,9 +19,14 @@
     <string name="search_locating_current_location">מאתר מיקום…</string>
     <string name="country_israel">ישראל</string>
     <string name="recent_places_title">לאחרונה</string>
+    <string name="pinned_set_home">הגדרת בית</string>
+    <string name="pinned_set_work">הגדרת עבודה</string>
+    <string name="pinned_pick_prompt_home">בחרו מקום לשמירה כ\'בית\'</string>
+    <string name="pinned_pick_prompt_work">בחרו מקום לשמירה כ\'עבודה\'</string>
+    <string name="pinned_saved_home">נשמר כבית</string>
+    <string name="pinned_saved_work">נשמר כעבודה</string>
 
     <!-- Results bottom sheet (Hebrew) -->
-    <string name="results_title">אפשרויות נסיעה</string>
     <string name="mode_transit">תחבורה ציבורית</string>
     <string name="mode_driver">נהג</string>
     <string name="mode_bike">אופניים</string>
@@ -53,6 +58,11 @@
     <string name="route_step_time_range">%1$s–%2$s</string>
     <string name="route_step_depart_only">יציאה %1$s</string>
     <string name="route_step_arrive_only">הגעה %1$s</string>
+    <string name="route_option_via_stop">מתחנת %1$s</string>
+    <string name="distance_km">%.1f ק״מ</string>
+    <string name="distance_meters">%1$d מ׳</string>
+    <string name="direct_modes_title">הליכה ואופניים</string>
+    <string name="transit_options_title">מסלולים מוצעים</string>
 
     <!-- Turn-by-turn walking directions (Hebrew) -->
     <string name="nav_walk_continue_to">המשך אל %1$s</string>

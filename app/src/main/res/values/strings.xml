@@ -21,9 +21,14 @@
     <string name="search_locating_current_location">Locating…</string>
     <string name="country_israel">Israel</string>
     <string name="recent_places_title">Recent</string>
+    <string name="pinned_set_home">Set home</string>
+    <string name="pinned_set_work">Set work</string>
+    <string name="pinned_pick_prompt_home">Choose a place to save as home</string>
+    <string name="pinned_pick_prompt_work">Choose a place to save as work</string>
+    <string name="pinned_saved_home">Saved as home</string>
+    <string name="pinned_saved_work">Saved as work</string>
 
     <!-- Results bottom sheet -->
-    <string name="results_title">Travel options</string>
     <string name="mode_transit">Public transit</string>
     <string name="mode_driver">Driver</string>
     <string name="mode_bike">Bike</string>
@@ -55,6 +60,11 @@
     <string name="route_step_time_range">%1$s–%2$s</string>
     <string name="route_step_depart_only">Departs %1$s</string>
     <string name="route_step_arrive_only">Arrives %1$s</string>
+    <string name="route_option_via_stop">From %1$s</string>
+    <string name="distance_km">%.1f km</string>
+    <string name="distance_meters">%1$d m</string>
+    <string name="direct_modes_title">Walking &amp; biking</string>
+    <string name="transit_options_title">Suggested routes</string>
 
     <!-- Turn-by-turn walking directions -->
     <string name="nav_walk_continue_to">Continue to %1$s</string>

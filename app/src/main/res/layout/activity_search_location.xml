@@ -86,7 +86,7 @@
         android:gravity="center_vertical"
         android:minHeight="48dp"
         android:nextFocusUp="@id/searchInput"
-        android:nextFocusDown="@id/resultsRecycler"
+        android:nextFocusDown="@id/homeRow"
         android:orientation="horizontal"
         android:paddingHorizontal="14dp">
 
@@ -116,6 +116,93 @@
             android:indeterminateTint="@color/movitop_primary"
             android:visibility="gone"
             tools:visibility="visible" />
+
+    </LinearLayout>
+
+    <!-- Home/Work quick-picks (see PinnedPlacesRepository). Tapping an unset
+         one starts a normal search whose next pick is saved into that slot;
+         long-press re-enters that mode to change an already-set one. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:weightSum="2">
+
+        <LinearLayout
+            android:id="@+id/homeRow"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_search_field"
+            android:focusable="true"
+            android:focusableInTouchMode="false"
+            android:gravity="center_vertical"
+            android:minHeight="48dp"
+            android:nextFocusUp="@id/currentLocationRow"
+            android:nextFocusDown="@id/resultsRecycler"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_home"
+                app:tint="@color/movitop_text_secondary" />
+
+            <TextView
+                android:id="@+id/homeText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/pinned_set_home"
+                android:textColor="@color/movitop_text_secondary"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/workRow"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_search_field"
+            android:focusable="true"
+            android:focusableInTouchMode="false"
+            android:gravity="center_vertical"
+            android:minHeight="48dp"
+            android:nextFocusUp="@id/currentLocationRow"
+            android:nextFocusDown="@id/resultsRecycler"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_work"
+                app:tint="@color/movitop_text_secondary" />
+
+            <TextView
+                android:id="@+id/workText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/pinned_set_work"
+                android:textColor="@color/movitop_text_secondary"
+                android:textSize="13sp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

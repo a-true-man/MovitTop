@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One compact walk/bike/driver/taxi card in the horizontal direct-modes row. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="104dp"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="5dp"
+    android:focusable="true"
+    android:focusableInTouchMode="false"
+    app:cardBackgroundColor="@color/movitop_surface"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/movitop_input_stroke"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="12dp">
+
+        <ImageView
+            android:id="@+id/directModeIcon"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_mode_icon"
+            android:importantForAccessibility="no"
+            android:padding="6dp"
+            tools:src="@drawable/ic_mode_walk" />
+
+        <TextView
+            android:id="@+id/directModeDuration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/movitop_text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="17 דק׳" />
+
+        <TextView
+            android:id="@+id/directModeSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:textColor="@color/movitop_text_secondary"
+            android:textSize="11sp"
+            tools:text="1.3 ק״מ" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>
