@@ -51,12 +51,22 @@ jobs:
       image: ghcr.io/motis-project/docker-cpp-build:latest
 
     steps:
+      - name: Checkout Movitop (for motis-patches/)
+        uses: actions/checkout@v4
+        with:
+          path: movitop
+
       - name: Checkout MOTIS
         uses: actions/checkout@v4
         with:
           repository: motis-project/motis
           ref: ${{ env.MOTIS_REF }}
           path: motis
+
+      - name: Apply Android seccomp-compat patch
+        run: |
+          git config --global --add safe.directory '*'
+          git -C motis apply "${GITHUB_WORKSPACE}/movitop/motis-patches/android-seccomp-shim.patch"
 
       - name: Fetch dependencies (pkg)
         working-directory: motis

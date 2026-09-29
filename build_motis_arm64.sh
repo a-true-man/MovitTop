@@ -38,6 +38,16 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
+# Android-compat patch (see motis-patches/README.md) — without it the binary
+# runs fine under `adb shell` but Android's seccomp-bpf filter for actual app
+# processes (untrusted_app) kills it with SIGSYS on first use of a blocked
+# syscall. Idempotent: skips if already applied (e.g. a dirty MOTIS_DIR).
+PATCH_FILE="${SCRIPT_DIR}/motis-patches/android-seccomp-shim.patch"
+if [[ -f "${PATCH_FILE}" && ! -f "${MOTIS_DIR}/exe/android_seccomp_shim.h" ]]; then
+  log "Applying Android seccomp-compat patch..."
+  git -C "${MOTIS_DIR}" apply "${PATCH_FILE}"
+fi
+
 mkdir -p "${JNILIBS_DIR}"
 
 log "Pulling ${BUILD_IMAGE} (if needed)..."

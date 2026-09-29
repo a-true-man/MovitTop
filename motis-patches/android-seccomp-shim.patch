@@ -1,0 +1,115 @@
+diff --git a/exe/android_seccomp_shim.h b/exe/android_seccomp_shim.h
+new file mode 100644
+index 0000000..dcc1a9b
+--- /dev/null
++++ b/exe/android_seccomp_shim.h
+@@ -0,0 +1,88 @@
++#pragma once
++
++// Movitop patch: Android's seccomp-bpf filter for regular (untrusted_app)
++// processes reacts to several syscalls that recent musl/gcc/boost releases
++// use by default — clone3, rseq, openat2, faccessat2, pidfd_open, statx,
++// io_uring_* — by delivering a synchronous, catchable SIGSYS (SECCOMP_RET_TRAP)
++// rather than the plain -ENOSYS a real "unsupported syscall" would return.
++// musl's own wrappers already know how to fall back to the pre-syscallN
++// equivalent on -ENOSYS; the only thing missing on Android is ever getting
++// that -ENOSYS instead of a signal that kills the process. This installs a
++// SIGSYS handler that fakes exactly that -ENOSYS return and lets execution
++// (and musl's fallback logic) continue normally.
++//
++// Must run before anything else in main() — before mimalloc, before Boost,
++// before nigiri/oneTBB — since any of them may hit one of these syscalls
++// during static initialization.
++//
++// Background: this is the same failure class (and the same fix) documented
++// for other modern native binaries (Bun, opencode, etc.) crashing under
++// Termux/Android with SIGSYS. Android's neverallow/seccomp policy has always
++// been this way for untrusted_app; it's the newer syscalls glibc/musl/boost
++// started preferring that made it start showing up.
++
++#include <cerrno>
++#include <csignal>
++#include <cstdio>
++#include <cstring>
++#include <ucontext.h>
++#include <unistd.h>
++
++#ifndef SYS_SECCOMP
++#define SYS_SECCOMP 1
++#endif
++
++namespace motis_android_compat {
++
++inline void log_line(const char* prefix, long value) {
++  char buf[96];
++  int n = std::snprintf(buf, sizeof(buf), "%s%ld\n", prefix, value);
++  if (n > 0) {
++    ::write(2, buf, static_cast<size_t>(n));
++  }
++}
++
++inline void handle_sigsys(int /* sig */, siginfo_t* info, void* ucontext_voidp) {
++  log_line("[android-seccomp-shim] SIGSYS entered, si_code=",
++           info == nullptr ? -1 : info->si_code);
++
++  if (info == nullptr || info->si_code != SYS_SECCOMP) {
++    // Not a seccomp trap (e.g. a real illegal syscall from corrupted state)
++    // — restore default handling so we get a proper crash/tombstone.
++    std::signal(SIGSYS, SIG_DFL);
++    return;
++  }
++
++  auto* ctx = static_cast<ucontext_t*>(ucontext_voidp);
++
++#if defined(__x86_64__)
++  auto const nr = ctx->uc_mcontext.gregs[REG_RAX];
++  log_line("[android-seccomp-shim] faked ENOSYS for syscall ", nr);
++  ctx->uc_mcontext.gregs[REG_RAX] = -ENOSYS;
++#elif defined(__aarch64__)
++  auto const nr = static_cast<long>(ctx->uc_mcontext.regs[8]);
++  log_line("[android-seccomp-shim] faked ENOSYS for syscall ", nr);
++  ctx->uc_mcontext.regs[0] = static_cast<unsigned long>(-ENOSYS);
++#else
++  // Unknown arch: nothing we can safely fake — fall back to default (crash).
++  std::signal(SIGSYS, SIG_DFL);
++#endif
++}
++
++inline void install() {
++  struct sigaction act {};
++  act.sa_sigaction = &handle_sigsys;
++  act.sa_flags = SA_SIGINFO;
++  sigemptyset(&act.sa_mask);
++  sigaction(SIGSYS, &act, nullptr);
++  ::write(2, "[android-seccomp-shim] installed\n", 34);
++}
++
++// Runs as early as possible (low .init_array priority) — before any global
++// C++ static object constructors from Boost/mimalloc/oneTBB/etc. that might
++// themselves hit one of the blocked syscalls during static init. The
++// explicit call from main() is kept too, in case some toolchains ignore
++// constructor priority ordering for statically-linked binaries.
++__attribute__((constructor(101))) inline void install_early() { install(); }
++
++}  // namespace motis_android_compat
+diff --git a/exe/main.cc b/exe/main.cc
+index 8f15e32..64af18a 100644
+--- a/exe/main.cc
++++ b/exe/main.cc
+@@ -21,6 +21,7 @@
+ #include "motis/logging.h"
+ #include "motis/server.h"
+ 
++#include "./android_seccomp_shim.h"
+ #include "./flags.h"
+ 
+ #if defined(USE_MIMALLOC) && defined(_WIN32)
+@@ -46,6 +47,8 @@ int params(int, char**);
+ using namespace motis;
+ 
+ int main(int ac, char** av) {
++  motis_android_compat::install();
++
+   auto const motis_version = std::string_view{MOTIS_VERSION};
+   if (ac > 1 && av[1] == "--help"sv) {
+     fmt::println(

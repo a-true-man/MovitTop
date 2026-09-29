@@ -36,6 +36,16 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
+# Android-compat patch (see motis-patches/README.md) — emulators run under the
+# same Android seccomp-bpf restrictions as real devices, so this dev build
+# needs it too to validate the on-device engine flow. Idempotent: skips if
+# already applied (e.g. a dirty MOTIS_DIR).
+PATCH_FILE="${SCRIPT_DIR}/motis-patches/android-seccomp-shim.patch"
+if [[ -f "${PATCH_FILE}" && ! -f "${MOTIS_DIR}/exe/android_seccomp_shim.h" ]]; then
+  log "Applying Android seccomp-compat patch..."
+  git -C "${MOTIS_DIR}" apply "${PATCH_FILE}"
+fi
+
 mkdir -p "${JNILIBS_DIR}"
 
 log "Pulling ${BUILD_IMAGE} (if needed)..."
