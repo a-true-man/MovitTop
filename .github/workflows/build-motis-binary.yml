@@ -23,7 +23,8 @@ on:
   workflow_dispatch:
 
 env:
-  MOTIS_REF: c9bc040e8d55540911775f4a3b2adb60f945c8bf
+  # Must match MOTIS_REF in setup_movitop_data.sh — see the comment there.
+  MOTIS_REF: dd233976d5e2497babcb0ba9be15fe4b30a78f5f
 
 jobs:
   build:

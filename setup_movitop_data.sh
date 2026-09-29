@@ -8,6 +8,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="${SCRIPT_DIR}/movitop_data"
 
 MOTIS_REPO="https://github.com/motis-project/motis.git"
+# Must match MOTIS_REF in .github/workflows/build-motis-binary.yml — the
+# jniLibs/*.so binaries shipped to devices are cross-compiled from that exact
+# commit. A graph compiled against any other commit can silently drift in
+# on-disk format (nigiri_bin_ver and friends), and the on-device MOTIS server
+# then refuses to start with "no existing version found" / "binary version
+# mismatch". Previously this cloned/pulled whatever was newest on MOTIS's
+# default branch, which is exactly how that drift happened. Bump both places
+# together (then rebuild+commit the binaries) if you ever change this.
+MOTIS_REF="dd233976d5e2497babcb0ba9be15fe4b30a78f5f"
 GTFS_URL="https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip"
 OSM_URL="https://download.geofabrik.de/asia/israel-and-palestine-latest.osm.pbf"
 # Pre-built Mapsforge vector map for the Android frontend (no osmosis needed).
@@ -46,11 +55,15 @@ mkdir -p "${DATA_DIR}"
 log "Working directory: ${DATA_DIR}"
 
 if [[ -d "${MOTIS_DIR}/.git" ]]; then
-  log "MOTIS repo exists, pulling latest ..."
-  git -C "${MOTIS_DIR}" pull --ff-only
+  log "MOTIS repo exists, fetching pinned commit ${MOTIS_REF} ..."
+  git -C "${MOTIS_DIR}" fetch --depth 1 origin "${MOTIS_REF}"
+  git -C "${MOTIS_DIR}" checkout --detach FETCH_HEAD
 else
-  log "Cloning MOTIS ..."
-  git clone --depth 1 "${MOTIS_REPO}" "${MOTIS_DIR}"
+  log "Cloning MOTIS at pinned commit ${MOTIS_REF} ..."
+  git init "${MOTIS_DIR}"
+  git -C "${MOTIS_DIR}" remote add origin "${MOTIS_REPO}"
+  git -C "${MOTIS_DIR}" fetch --depth 1 origin "${MOTIS_REF}"
+  git -C "${MOTIS_DIR}" checkout --detach FETCH_HEAD
 fi
 
 download "${GTFS_URL}" "${GTFS_ZIP}"
