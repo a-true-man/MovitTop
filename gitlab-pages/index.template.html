@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Movitop — נתוני תחבורה ציבורית</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    max-width: 640px;
+    margin: 48px auto;
+    padding: 0 20px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 1.5rem; }
+  .card {
+    border: 1px solid #ccc;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+  .btn {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 10px 20px;
+    background: #1a73e8;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+  }
+  .muted { color: #777; font-size: 0.9rem; }
+  code { background: rgba(127,127,127,0.15); padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <h1>Movitop — עדכון נתוני תחבורה ציבורית</h1>
+  <p>
+    החבילה כאן מכילה את גרף הניתוב המחושב (MOTIS) ואת מסד הזמנים לפי קו,
+    בנויים מקובץ ה-GTFS הארצי העדכני ביותר. מנוע MOTIS עצמו לא משתנה — רק
+    הנתונים.
+  </p>
+  <div class="card">
+    <div>עדכון אחרון: <strong>{{BUILD_DATE}}</strong></div>
+    <div class="muted">קובץ: <code>{{PKG_NAME}}</code></div>
+    <a class="btn" href="{{DOWNLOAD_URL}}">הורדת החבילה העדכנית</a>
+  </div>
+  <p class="muted">
+    לאחר ההורדה: ייבאו את הקובץ למכשיר דרך מסך "ייבוא נתוני תחבורה מעודכנים"
+    באפליקציה. כל הגרסאות הקודמות זמינות ב-
+    <a href="{{PACKAGE_URL}}">מרשם החבילות (Package Registry)</a> של הפרויקט.
+  </p>
+  <p class="muted">
+    החבילה מתעדכנת אוטומטית מדי מוצאי שבת בשעה 19:00 (שעון ישראל).
+    מקור: <a href="{{PROJECT_URL}}">{{PROJECT_URL}}</a>
+  </p>
+</body>
+</html>

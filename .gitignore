@@ -20,3 +20,7 @@ __pycache__/
 # Large offline datasets — download via setup_movitop_data.sh
 movitop_data/**
 !movitop_data/config.yml
+
+# Release signing — never commit the keystore or its passwords
+/keystore/
+keystore.properties

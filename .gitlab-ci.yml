@@ -1,0 +1,112 @@
+# Movitop — weekly refresh of the Israeli transit data (GTFS -> optimized
+# GTFS -> compiled MOTIS graph + per-line schedule DB), published for
+# download from a small GitLab Pages status page.
+#
+# The MOTIS *engine* binary (app/src/main/jniLibs/*/libmotis.so, already in
+# this repo) never changes here — this pipeline only rebuilds the *data*
+# MOTIS serves: `motis import` re-reads the OSM extract + a fresh GTFS feed
+# and writes a new routing graph, exactly like compile_motis_graph.sh does
+# on a dev machine. See GITLAB_AUTOMATION.md for the full picture and setup
+# steps (this file alone does nothing until a Pipeline Schedule triggers it).
+#
+# Trigger: GitLab Pipeline Schedule, cron "0 19 * * 6", timezone
+# Asia/Jerusalem (Saturday 19:00 Israel time). A manual "Run pipeline" from
+# the Pipelines page also runs it.
+
+stages:
+  - build
+  - publish
+
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DATA_DIR: ${CI_PROJECT_DIR}/movitop_data
+  GTFS_URL: https://gtfs.mot.gov.il/gtfsfiles/israel-public-transportation.zip
+  OSM_URL: https://download.geofabrik.de/asia/israel-and-palestine-latest.osm.pbf
+  PACKAGE_REGISTRY_NAME: movitop-data
+
+.only_scheduled_or_manual: &only_scheduled_or_manual
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+
+refresh-transit-data:
+  stage: build
+  image: python:3.12
+  services:
+    - docker:24-dind
+  <<: *only_scheduled_or_manual
+  timeout: 2h
+  cache:
+    key: osm-pbf-v1
+    paths:
+      - movitop_data/israel-and-palestine-latest.osm.pbf
+  before_script:
+    # Docker CLI only (the daemon runs in the dind service) — a static
+    # binary avoids pulling in apt's full docker.io package.
+    - curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-24.0.7.tgz
+      | tar xz --strip-components=1 -C /usr/local/bin docker/docker
+    - pip install --quiet pandas
+  script:
+    - mkdir -p "${DATA_DIR}"
+    - cp movitop_data/config.yml "${DATA_DIR}/config.yml"
+
+    - echo "== Fetching this week's GTFS feed =="
+    - curl -fL --retry 5 --retry-delay 5 -o "${DATA_DIR}/israel-public-transportation.zip" "${GTFS_URL}"
+
+    - echo "== OSM extract (cached — only re-downloaded if missing) =="
+    - |
+      if [ ! -f "${DATA_DIR}/israel-and-palestine-latest.osm.pbf" ]; then
+        curl -fL --retry 5 --retry-delay 5 -o "${DATA_DIR}/israel-and-palestine-latest.osm.pbf" "${OSM_URL}"
+      fi
+
+    - echo "== Optimizing GTFS =="
+    - python3 optimize_gtfs.py --data-dir "${DATA_DIR}"
+
+    - echo "== Compiling the MOTIS routing graph (motis import) =="
+    - ./compile_motis_graph.sh
+
+    - echo "== Building the per-line schedule DB =="
+    - python3 build_line_schedules.py --gtfs "${DATA_DIR}/israel-optimized.zip" --output "${DATA_DIR}/data/line_schedules.sqlite"
+
+    - echo "== Packaging =="
+    - export BUILD_DATE=$(date +%Y%m%d)
+    - export PKG_NAME="movitop-data-${BUILD_DATE}.zip"
+    - ./package_motis_data.sh "${CI_PROJECT_DIR}/${PKG_NAME}"
+    - echo "BUILD_DATE=${BUILD_DATE}" > package.env
+    - echo "PKG_NAME=${PKG_NAME}" >> package.env
+
+    # The graph is ~1-2GB — too big for a GitLab.com free-tier job artifact
+    # or Pages deployment (both capped around 1GB), so it's uploaded
+    # straight to this project's generic Package Registry instead, which
+    # has no such cap. The `pages` job below only publishes a small HTML
+    # page that links to it.
+    - echo "== Uploading to the Package Registry =="
+    - |
+      curl --fail --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+        --upload-file "${CI_PROJECT_DIR}/${PKG_NAME}" \
+        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_REGISTRY_NAME}/${BUILD_DATE}/${PKG_NAME}"
+  artifacts:
+    reports:
+      dotenv: package.env
+    expire_in: 1 day
+
+pages:
+  stage: publish
+  image: alpine:3.20
+  needs:
+    - refresh-transit-data
+  <<: *only_scheduled_or_manual
+  script:
+    - mkdir -p public
+    - export DOWNLOAD_URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${PACKAGE_REGISTRY_NAME}/${BUILD_DATE}/${PKG_NAME}"
+    - export PACKAGE_URL="${CI_PROJECT_URL}/-/packages"
+    - sed -e "s#{{BUILD_DATE}}#${BUILD_DATE}#g" \
+          -e "s#{{PKG_NAME}}#${PKG_NAME}#g" \
+          -e "s#{{DOWNLOAD_URL}}#${DOWNLOAD_URL}#g" \
+          -e "s#{{PACKAGE_URL}}#${PACKAGE_URL}#g" \
+          -e "s#{{PROJECT_URL}}#${CI_PROJECT_URL}#g" \
+          gitlab-pages/index.template.html > public/index.html
+  artifacts:
+    paths:
+      - public
