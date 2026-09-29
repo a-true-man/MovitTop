@@ -17,6 +17,13 @@ GRAPH_DIR="${DATA_DIR}/data"
 TZDATA_DIR="${DATA_DIR}/tzdata"
 MAP_FILE="${DATA_DIR}/israel.map"
 OUTPUT="${1:-${SCRIPT_DIR}/movitop-data-$(date +%Y%m%d).zip}"
+# Resolve to an absolute path up front: the zip step below `cd`s into
+# GRAPH_DIR first, so a relative OUTPUT would otherwise land in there
+# instead of wherever the caller's cwd was.
+case "${OUTPUT}" in
+  /*) ;;
+  *) OUTPUT="$(pwd)/${OUTPUT}" ;;
+esac
 
 log() { echo "[package_motis_data] $*"; }
 
