@@ -123,6 +123,7 @@ jobs:
           sed -e "s#{{BUILD_DATE}}#${{ steps.package.outputs.build_date }}#g" \
               -e "s#{{DOWNLOAD_URL}}#${DOWNLOAD_URL}#g" \
               -e "s#{{RELEASE_URL}}#${RELEASE_URL}#g" \
+              -e "s#{{REPO}}#${{ github.repository }}#g" \
               -e "s#{{PROJECT_URL}}#https://github.com/${{ github.repository }}#g" \
               github-pages/index.template.html > public/index.html
 
