@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One distinct line found by a search/saved-lines lookup, its two
+     directions already merged (see LineSummaryAdapter/LineSummary) — the
+     top-level list of the "Line times" screen. Tapping the card opens this
+     line's timetable (LineTimesScreen.LineDetail); the star toggles it as a
+     saved line. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="5dp"
+    android:focusable="true"
+    android:focusableInTouchMode="false">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:minHeight="44dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="12dp">
+
+        <TextView
+            android:id="@+id/lineSummaryBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_line_badge"
+            android:gravity="center"
+            android:minWidth="52dp"
+            android:paddingHorizontal="8dp"
+            android:textColor="@color/movitop_on_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="133" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/lineSummaryAgency"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/movitop_text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                tools:text="קווים" />
+
+            <TextView
+                android:id="@+id/lineSummaryEndpoints"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/movitop_text_secondary"
+                android:textSize="13sp"
+                tools:text="מודיעין עילית ⇄ ביתר עילית" />
+
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/lineSummaryFavoriteStarButton"
+            style="@style/Widget.Material3.Button.IconButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="4dp"
+            app:icon="@drawable/ic_star"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="22dp"
+            app:iconTint="@color/movitop_text_secondary" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

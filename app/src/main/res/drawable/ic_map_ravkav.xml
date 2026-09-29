@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rav-Kav charging-station map marker — same pin silhouette as ic_map_stop
+     (for a consistent map-pin language) but a card glyph inside instead of a
+     dot, and a distinct color, so the two marker kinds read apart at a glance. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/movitop_ravkav_marker"
+        android:pathData="M12,2C8.13,2 5,5.13 5,9c0,5.25 7,13 7,13s7,-7.75 7,-13c0,-3.87 -3.13,-7 -7,-7z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8.5,6.75m0,1 a1,1 0,0 1,1 -1h5a1,1 0,0 1,1 1v2.5a1,1 0,0 1,-1 1h-5a1,1 0,0 1,-1 -1z" />
+    <path
+        android:fillColor="@color/movitop_ravkav_marker"
+        android:pathData="M8.5,8.55h7v0.9h-7z" />
+</vector>

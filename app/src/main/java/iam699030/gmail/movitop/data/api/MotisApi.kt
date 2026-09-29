@@ -44,4 +44,27 @@ interface MotisApi {
         @Query("n") n: Int = 30,
         @Query("arriveBy") arriveBy: Boolean = false
     ): StopTimesResponseDto
+
+    /**
+     * Transit stops (bus/rail/etc.) inside a map viewport — powers the map's
+     * station markers. [min]/[max] are "lat,lon" pairs (lower-right / upper-left).
+     */
+    @GET("api/v1/map/stops")
+    suspend fun mapStops(
+        @Query("min") min: String,
+        @Query("max") max: String
+    ): List<PlaceDto>
+
+    /**
+     * Upcoming departures at a known [stopId] — powers the map's station-tap
+     * bottom sheet (and, filtered client-side to one route, its "full
+     * schedule for this line" drill-down). [window] is in seconds.
+     */
+    @GET("api/v6/stoptimes")
+    suspend fun stoptimesForStop(
+        @Query("stopId") stopId: String,
+        @Query("n") n: Int = 20,
+        @Query("window") window: Int? = null,
+        @Query("arriveBy") arriveBy: Boolean = false
+    ): StopTimesResponseDto
 }

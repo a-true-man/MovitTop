@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One callable driver/taxi station row — the whole row dials the number. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    android:focusable="true"
+    android:focusableInTouchMode="false"
+    app:cardBackgroundColor="@color/movitop_surface"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/movitop_input_stroke"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:minHeight="60dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="10dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/stationName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/movitop_text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                tools:text="מוניות ירושלים" />
+
+            <TextView
+                android:id="@+id/stationSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/movitop_text_secondary"
+                android:textSize="13sp"
+                tools:text="02-3762055 · זמינה 24 שעות" />
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/stationCallIcon"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/bg_mode_icon"
+            android:contentDescription="@string/car_service_call_description"
+            android:padding="7dp"
+            android:src="@drawable/ic_call" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

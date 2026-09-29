@@ -1,6 +1,13 @@
 <resources>
     <string name="app_name">Movitop</string>
 
+    <!-- Splash screen — brand names are shown in English regardless of
+         locale (same convention as "Powered by Android" on stock boot). -->
+    <string name="splash_logo_text" translatable="false">MovitTop</string>
+    <string name="splash_powered_by" translatable="false">Powered by</string>
+    <string name="splash_powered_by_motis" translatable="false">Motis</string>
+    <string name="splash_loading_data">Loading data…</string>
+
     <!-- MOTIS foreground service -->
     <string name="motis_channel_name">Navigation Engine</string>
     <string name="motis_channel_description">Keeps the offline routing engine running</string>
@@ -18,6 +25,11 @@
     <string name="search_location_hint">Search address or place\u2026</string>
     <string name="search_no_results">No places found. Try a different name.</string>
     <string name="search_use_current_location">My current location</string>
+    <string name="place_type_stop">Stop</string>
+    <string name="place_type_coordinate">Point</string>
+    <string name="place_type_place">Place</string>
+    <string name="place_type_street">Street</string>
+    <string name="place_type_address">Address</string>
     <string name="search_locating_current_location">Locating…</string>
     <string name="country_israel">Israel</string>
     <string name="recent_places_title">Recent</string>
@@ -25,6 +37,8 @@
     <string name="pinned_set_work">Set work</string>
     <string name="pinned_pick_prompt_home">Choose a place to save as home</string>
     <string name="pinned_pick_prompt_work">Choose a place to save as work</string>
+    <string name="pinned_picking_active">Choosing…</string>
+    <string name="pinned_pick_cancel">Cancel</string>
     <string name="pinned_saved_home">Saved as home</string>
     <string name="pinned_saved_work">Saved as work</string>
 
@@ -63,8 +77,16 @@
     <string name="route_option_via_stop">From %1$s</string>
     <string name="distance_km">%.1f km</string>
     <string name="distance_meters">%1$d m</string>
-    <string name="direct_modes_title">Walking &amp; biking</string>
+    <string name="direct_modes_title">More ways to go</string>
     <string name="transit_options_title">Suggested routes</string>
+    <string name="route_switch_title">Switch route</string>
+
+    <!-- Driver / taxi station picker -->
+    <string name="car_service_call_description">Call</string>
+    <string name="driver_stations_dialog_title">Driver — call a station</string>
+    <string name="driver_stations_dialog_subtitle">Pick a service to call and book your ride</string>
+    <string name="taxi_stations_dialog_title">Taxi — stations near %1$s</string>
+    <string name="taxi_stations_dialog_subtitle">Pick a station to call and book your ride</string>
 
     <!-- Turn-by-turn walking directions -->
     <string name="nav_walk_continue_to">Continue to %1$s</string>
@@ -84,9 +106,12 @@
 
     <!-- Offline map -->
     <string name="map_missing_log">Offline map not found at %1$s — showing empty map.</string>
+    <string name="no_offline_data_banner">No offline transit data is installed on this device yet.</string>
+    <string name="no_offline_data_action">Import</string>
 
     <!-- Network / errors -->
     <string name="search_error_network">Oops, my satellite link dropped 🛰️. Is the routing engine running?</string>
+    <string name="search_error_no_data">No offline transit data is installed on this device yet. Tap the import button to add it.</string>
     <string name="search_error_place">I couldn\'t find %1$s on the map 🗺️. Try a more specific name, maybe with the city.</string>
     <string name="search_no_routes">I couldn\'t find any route for that. Try another destination?</string>
 
@@ -130,11 +155,16 @@
     <string name="line_times_button_description">Line times</string>
     <string name="line_times_title">Line times</string>
     <string name="line_times_hint">Line number or name…</string>
-    <string name="line_times_from_stop">From: %1$s</string>
-    <string name="line_times_no_results">No departures found for that line on this day.</string>
+    <string name="line_times_no_results">No lines found for that search.</string>
+    <string name="line_times_no_departures">No departures found for this direction on this day.</string>
+    <string name="line_times_no_stops">No stops found for this trip.</string>
     <string name="line_times_unavailable">Line schedule data isn\'t installed on this device yet.</string>
     <string name="line_times_favorites_title">Saved lines</string>
     <string name="line_times_favorites_empty">No saved lines yet. Search a line and tap the star to save it.</string>
+    <string name="line_times_back_description">Back</string>
+    <string name="line_times_direction_toggle_description">Switch direction</string>
+    <string name="line_times_timetable_eyebrow">Timetable</string>
+    <string name="line_times_trip_stops_eyebrow">All stops · departs %1$s</string>
     <string name="favorite_star_add_description">Save line</string>
     <string name="favorite_star_remove_description">Remove saved line</string>
 
@@ -149,6 +179,7 @@
     <string name="nearby_title">Nearby</string>
     <string name="nearby_subtitle">Upcoming departures near you</string>
     <string name="nearby_empty">No upcoming departures found nearby. Try moving closer to a stop, or check GPS is on.</string>
+    <string name="nearby_no_offline_data">No offline transit data is installed on this device yet — import it from the main map screen first.</string>
     <string name="nearby_locating">Finding your location…</string>
     <string name="nearby_minutes_until">in %1$d min</string>
     <string name="nearby_departing_now">Departing now</string>
@@ -164,4 +195,47 @@
     <string name="data_import_in_progress">Importing… this may take a moment.</string>
     <string name="data_import_success">Import complete (%1$d files). Engine restarted with the new data.</string>
     <string name="data_import_failure">Import failed: %1$s</string>
+    <string name="data_import_error_open_failed">Could not open the selected file</string>
+    <string name="data_import_error_invalid_package">The selected file isn\'t a valid data package (missing config.yml)</string>
+    <string name="data_import_error_unknown">Unknown error</string>
+
+    <!-- Map station / Rav-Kav charging markers -->
+    <string name="dialog_close_button">Close</string>
+    <string name="stop_info_no_routes">No upcoming departures found for this stop right now.</string>
+    <string name="stop_departures_back_description">Back</string>
+    <string name="stop_line_schedule_title">Route %1$s · %2$s</string>
+    <string name="stop_line_also_at">Also at %1$s</string>
+
+    <!-- Relative time formatting (RelativeTime.kt) -->
+    <string name="weekday_sunday">Sunday</string>
+    <string name="weekday_monday">Monday</string>
+    <string name="weekday_tuesday">Tuesday</string>
+    <string name="weekday_wednesday">Wednesday</string>
+    <string name="weekday_thursday">Thursday</string>
+    <string name="weekday_friday">Friday</string>
+    <string name="weekday_saturday">Saturday</string>
+    <string name="relative_hour_singular">1 hour</string>
+    <string name="relative_hour_dual">2 hours</string>
+    <string name="relative_hours_plural">%1$d hours</string>
+    <string name="relative_in_hours_only">in %1$s</string>
+    <string name="relative_in_hours_and_minutes">in %1$s %2$d min</string>
+    <string name="relative_departs_on_day">Departs %1$s at %2$s</string>
+    <string name="ravkav_label_city">City</string>
+    <string name="ravkav_label_address">Address</string>
+    <string name="ravkav_label_agency">Operator</string>
+    <string name="ravkav_label_phone">Phone</string>
+    <string name="ravkav_label_hours">Opening hours</string>
+    <string name="ravkav_station_generic_name">Rav-Kav charging station</string>
+    <string name="ravkav_accepts_cash">Accepts cash</string>
+    <string name="ravkav_accepts_credit_card">Accepts credit card</string>
+    <string name="ravkav_accessible">Wheelchair accessible</string>
+    <string name="ravkav_hours_closed">Closed</string>
+    <string name="ravkav_days_sun_thu">Sun–Thu</string>
+    <string name="ravkav_days_sun">Sun</string>
+    <string name="ravkav_days_mon">Mon</string>
+    <string name="ravkav_days_tue">Tue</string>
+    <string name="ravkav_days_wed">Wed</string>
+    <string name="ravkav_days_thu">Thu</string>
+    <string name="ravkav_days_fri">Fri</string>
+    <string name="ravkav_days_sat">Sat</string>
 </resources>

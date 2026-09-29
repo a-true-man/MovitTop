@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground"
@@ -9,50 +10,182 @@
     android:paddingVertical="16dp">
 
     <TextView
+        android:id="@+id/lineTimesSearchTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/line_times_title"
         android:textColor="@color/movitop_text_primary"
-        android:textSize="18sp"
+        android:textSize="20sp"
         android:textStyle="bold" />
 
     <LinearLayout
+        android:id="@+id/lineTimesDetailHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/lineTimesBackButton"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="-10dp"
+                android:contentDescription="@string/line_times_back_description"
+                app:icon="@drawable/ic_back"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="20dp"
+                app:iconTint="@color/movitop_text_primary" />
+
+            <TextView
+                android:id="@+id/lineTimesDetailEyebrow"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:letterSpacing="0.03"
+                android:maxLines="1"
+                android:textColor="@color/movitop_text_secondary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                tools:text="לוח זמנים" />
+
+        </LinearLayout>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="12dp">
+
+                <TextView
+                    android:id="@+id/lineTimesDetailBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_line_badge"
+                    android:gravity="center"
+                    android:minWidth="52dp"
+                    android:paddingHorizontal="8dp"
+                    android:textColor="@color/movitop_on_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    tools:text="133" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/lineTimesDetailAgency"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/movitop_text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        tools:text="קווים" />
+
+                    <TextView
+                        android:id="@+id/lineTimesDetailEndpoints"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:ellipsize="end"
+                        android:maxLines="2"
+                        android:textColor="@color/movitop_text_secondary"
+                        android:textSize="13sp"
+                        tools:text="מודיעין עילית ⇄ ביתר עילית" />
+
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/lineTimesDirectionToggleButton"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="@string/line_times_direction_toggle_description"
+                    android:visibility="gone"
+                    app:icon="@drawable/ic_swap"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="22dp"
+                    tools:visibility="visible" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/lineTimesSearchRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
         android:orientation="horizontal">
 
         <EditText
             android:id="@+id/lineQueryInput"
             android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_height="52dp"
             android:layout_weight="1"
             android:background="@drawable/bg_search_field"
             android:hint="@string/line_times_hint"
             android:imeOptions="actionSearch"
             android:inputType="text"
-            android:nextFocusDown="@id/lineDateButton"
-            android:paddingHorizontal="14dp"
+            android:nextFocusDown="@id/departuresRecycler"
+            android:paddingHorizontal="16dp"
             android:singleLine="true"
             android:textColor="@color/movitop_text_primary"
-            android:textColorHint="@color/movitop_text_secondary" />
+            android:textColorHint="@color/movitop_text_secondary"
+            android:textSize="15sp" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/lineDateButton"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginStart="8dp"
-            android:nextFocusUp="@id/lineQueryInput"
-            android:text="@string/trip_time_now"
-            android:textSize="13sp"
-            app:cornerRadius="14dp" />
     </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/lineDateButton"
+        android:layout_width="wrap_content"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:cornerRadius="12dp"
+        app:icon="@drawable/ic_calendar"
+        app:iconGravity="textStart"
+        app:iconSize="16dp"
+        tools:text="29/09"
+        tools:visibility="visible" />
 
     <TextView
         android:id="@+id/lineTimesFavoritesHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="18dp"
+        android:layout_marginBottom="2dp"
+        android:letterSpacing="0.03"
         android:text="@string/line_times_favorites_title"
         android:textColor="@color/movitop_text_secondary"
         android:textSize="13sp"
@@ -63,20 +196,37 @@
         android:id="@+id/departuresRecycler"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="10dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        tools:listitem="@layout/item_line_departure"
-        xmlns:tools="http://schemas.android.com/tools" />
+        tools:listitem="@layout/item_line_summary" />
 
-    <TextView
-        android:id="@+id/lineTimesEmptyText"
+    <LinearLayout
+        android:id="@+id/lineTimesEmptyState"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:gravity="center"
-        android:textColor="@color/movitop_text_secondary"
-        android:textSize="13sp"
-        android:visibility="gone" />
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:alpha="0.35"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_route_marker"
+            app:tint="@color/movitop_text_secondary" />
+
+        <TextView
+            android:id="@+id/lineTimesEmptyText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:textColor="@color/movitop_text_secondary"
+            android:textSize="13sp" />
+
+    </LinearLayout>
 
 </LinearLayout>

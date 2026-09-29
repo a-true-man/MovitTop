@@ -71,6 +71,22 @@ class MainViewModel(
         val destination = _uiState.value.destinationQuery.trim()
         if (origin.isEmpty() || destination.isEmpty()) return
 
+        // Without this check, a fresh install with no imported graph fails
+        // every search against a routing engine that can never come up, and
+        // reports it as the same generic "network error" as an actual outage
+        // — nothing tells the user they need to import data at all.
+        if (!MotisForegroundService.hasOfflineData(getApplication())) {
+            _uiState.update {
+                it.copy(
+                    originQuery = origin,
+                    destinationQuery = destination,
+                    routingState = RoutingState.Idle,
+                    errorMessage = getString(R.string.search_error_no_data)
+                )
+            }
+            return
+        }
+
         _routes.value = null
         _routeDetail.value = null
         _uiState.update {
@@ -122,7 +138,11 @@ class MainViewModel(
     }
 
     fun selectRoute(option: RouteOption) {
-        if (_uiState.value.routingState != RoutingState.ResultsReady) return
+        // Allowed from ResultsReady (first pick) and from ViewingRouteDetails
+        // (switching to a different option without leaving the detail pane
+        // or re-running search()) — not from Idle/Calculating.
+        val state = _uiState.value.routingState
+        if (state != RoutingState.ResultsReady && state !is RoutingState.ViewingRouteDetails) return
         val origin = _uiState.value.originQuery
         val destination = _uiState.value.destinationQuery
         _routeDetail.value = null

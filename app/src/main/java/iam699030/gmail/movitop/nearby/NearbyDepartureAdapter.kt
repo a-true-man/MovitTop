@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import iam699030.gmail.movitop.R
 import iam699030.gmail.movitop.data.NearbyDeparture
+import iam699030.gmail.movitop.data.RelativeTime
 
 /** Renders each upcoming nearby departure; tapping one picks its stop as the destination. */
 class NearbyDepartureAdapter(
@@ -45,10 +46,10 @@ class NearbyDepartureAdapter(
             R.string.nearby_distance_meters, item.distanceMeters.toInt()
         ).let { distanceText -> "${item.stopName} · $distanceText" }
         holder.time.text = item.departTimeText
-        holder.minutes.text = if (item.minutesUntil <= 0) {
-            context.getString(R.string.nearby_departing_now)
+        holder.minutes.text = if (RelativeTime.isStale(item.departEpochMillis)) {
+            ""
         } else {
-            context.getString(R.string.nearby_minutes_until, item.minutesUntil)
+            RelativeTime.describe(context, item.departEpochMillis)
         }
 
         holder.itemView.setOnClickListener { onSelected(item) }

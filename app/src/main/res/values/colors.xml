@@ -33,4 +33,7 @@
 
     <!-- "Leaves in X min" countdown -->
     <color name="movitop_departs_soon">#1F9254</color>
+
+    <!-- Rav-Kav charging-station map marker -->
+    <color name="movitop_ravkav_marker">#0E8F7A</color>
 </resources>

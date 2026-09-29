@@ -56,7 +56,8 @@ data class PlaceDto(
     val lon: Double? = null,
     val stopId: String? = null,
     val arrival: String? = null, // ISO-8601, only set on /stoptimes results
-    val departure: String? = null // ISO-8601, only set on /stoptimes results
+    val departure: String? = null, // ISO-8601, only set on /stoptimes results
+    val modes: List<String>? = null // only set on /map/stops results
 )
 
 /** `GET /api/v6/stoptimes` response — upcoming departures/arrivals near a point or stop. */

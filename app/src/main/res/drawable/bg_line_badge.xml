@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Rounded, stroke-only chip for a transit line badge — stroke/text color is
-     tinted per-line at bind time (see TransitRouteAdapter), so this just
-     defines the shape. -->
+<!-- The colored pill behind a line's number — same visual language as real
+     transit signage (Moovit/Google Maps line chips), so a line reads as a
+     line at a glance instead of a bare row of text. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <corners android:radius="8dp" />
-    <solid android:color="@color/movitop_surface" />
-    <stroke
-        android:width="1.5dp"
-        android:color="@color/movitop_primary" />
+    <solid android:color="@color/movitop_primary" />
+    <corners android:radius="10dp" />
 </shape>

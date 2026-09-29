@@ -1,5 +1,7 @@
 package iam699030.gmail.movitop.data
 
+import android.content.Context
+import iam699030.gmail.movitop.R
 import iam699030.gmail.movitop.data.api.GeocodeDto
 import java.io.Serializable
 
@@ -15,11 +17,11 @@ data class GeocodePlace(
     val displayKey: String get() = id ?: "$name@$lat,$lon"
 }
 
-fun GeocodeDto.toGeocodePlace(): GeocodePlace? {
+fun GeocodeDto.toGeocodePlace(context: Context): GeocodePlace? {
     val placeName = name?.trim()?.takeIf { it.isNotEmpty() } ?: return null
     return GeocodePlace(
         name = placeName,
-        subtitle = buildSubtitle(placeName, city, state, country, type),
+        subtitle = buildSubtitle(context, placeName, city, state, country, type),
         lat = lat,
         lon = lon,
         id = id
@@ -27,6 +29,7 @@ fun GeocodeDto.toGeocodePlace(): GeocodePlace? {
 }
 
 private fun buildSubtitle(
+    context: Context,
     name: String,
     city: String?,
     state: String?,
@@ -39,7 +42,7 @@ private fun buildSubtitle(
     country?.trim()?.takeIf { it.isNotEmpty() }?.let(parts::add)
     if (parts.isNotEmpty()) return parts.joinToString(" · ")
 
-    type?.trim()?.takeIf { it.isNotEmpty() }?.let { return formatPlaceType(it) }
+    type?.trim()?.takeIf { it.isNotEmpty() }?.let { return formatPlaceType(context, it) }
 
     val commaParts = name.split(',').map { it.trim() }.filter { it.isNotEmpty() }
     if (commaParts.size >= 2) {
@@ -48,11 +51,17 @@ private fun buildSubtitle(
     return null
 }
 
-private fun formatPlaceType(type: String): String = when (type.uppercase()) {
-    "STOP" -> "תחנה"
-    "COORDINATE" -> "נקודה"
-    "PLACE" -> "מקום"
-    "STREET" -> "רחוב"
-    "ADDRESS" -> "כתובת"
+/**
+ * These used to be hardcoded Hebrew literals, which meant a search result's
+ * subtitle stayed in Hebrew even after switching the app to English (see
+ * [iam699030.gmail.movitop.SettingsActivity]) — routed through string
+ * resources now so it follows the same per-app locale as everything else.
+ */
+private fun formatPlaceType(context: Context, type: String): String = when (type.uppercase()) {
+    "STOP" -> context.getString(R.string.place_type_stop)
+    "COORDINATE" -> context.getString(R.string.place_type_coordinate)
+    "PLACE" -> context.getString(R.string.place_type_place)
+    "STREET" -> context.getString(R.string.place_type_street)
+    "ADDRESS" -> context.getString(R.string.place_type_address)
     else -> type
 }

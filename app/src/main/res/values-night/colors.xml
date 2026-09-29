@@ -24,4 +24,7 @@
     <color name="movitop_input_stroke">#2F3742</color>
     <color name="movitop_chip_bg">#232A33</color>
     <color name="movitop_chip_text">#9CC0FF</color>
+
+    <!-- Rav-Kav charging-station map marker -->
+    <color name="movitop_ravkav_marker">#3FBFAA</color>
 </resources>

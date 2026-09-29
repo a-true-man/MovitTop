@@ -4,6 +4,9 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import iam699030.gmail.movitop.MotisForegroundService
+import iam699030.gmail.movitop.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.util.zip.ZipInputStream
@@ -32,7 +35,11 @@ class DataImportManager(private val context: Context) {
     private val motisRoot: File
         get() = File(context.getExternalFilesDir(null), "motis_data")
 
-    suspend fun import(uri: Uri): Result {
+    suspend fun import(uri: Uri): Result = withContext(Dispatchers.IO) {
+        importBlocking(uri)
+    }
+
+    private fun importBlocking(uri: Uri): Result {
         val staging = File(motisRoot, "data_staging")
         val stagingGraph = File(staging, "data")
         val stagingTzdata = File(staging, "tzdata")
@@ -61,11 +68,11 @@ class DataImportManager(private val context: Context) {
                         entry = zip.nextEntry
                     }
                 }
-            } ?: return Result.Failure("לא ניתן היה לפתוח את הקובץ שנבחר")
+            } ?: return Result.Failure(context.getString(R.string.data_import_error_open_failed))
 
             if (!File(stagingGraph, "config.yml").isFile) {
                 staging.deleteRecursively()
-                return Result.Failure("הקובץ שנבחר אינו חבילת נתונים תקינה (חסר config.yml)")
+                return Result.Failure(context.getString(R.string.data_import_error_invalid_package))
             }
 
             // Only touch the live directory once the new package is verified.
@@ -91,7 +98,7 @@ class DataImportManager(private val context: Context) {
         } catch (e: IOException) {
             Log.e(TAG, "Data import failed", e)
             staging.deleteRecursively()
-            return Result.Failure("הייבוא נכשל: ${e.message}")
+            return Result.Failure(e.message ?: context.getString(R.string.data_import_error_unknown))
         }
     }
 

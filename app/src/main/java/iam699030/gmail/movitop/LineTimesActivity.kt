@@ -8,33 +8,61 @@ import android.view.KeyEvent
 import android.view.View
 import android.widget.EditText
 import android.widget.TextView
+import androidx.activity.addCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
+import iam699030.gmail.movitop.data.GtfsTime
 import iam699030.gmail.movitop.data.LineDepartureAdapter
+import iam699030.gmail.movitop.data.LineSummary
+import iam699030.gmail.movitop.data.LineSummaryAdapter
+import iam699030.gmail.movitop.data.TripStopAdapter
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
 /**
- * Search a line, see its scheduled departures for a chosen day. Pure local
- * lookup against the SQLite DB built by build_line_schedules.py — no MOTIS
- * query, no network, works even if the routing engine isn't running.
+ * Search a line, see the distinct lines found (both directions merged into
+ * one card, see LineSummary), drill into one line's timetable for a chosen
+ * day with a direction toggle, then drill into one trip's full stop-by-stop
+ * arrival list. Pure local lookup against the SQLite DB built by
+ * build_line_schedules.py — no MOTIS query, no network, works even if the
+ * routing engine isn't running.
+ *
+ * Single activity, three in-place-swapped screens (see LineTimesScreen) —
+ * same pattern as MainActivity's stop-tap bottom sheet drill-down
+ * (stopLineAdapter/lineScheduleAdapter), just with one more level.
  */
 class LineTimesActivity : AppCompatActivity() {
 
     private val viewModel: LineTimesViewModel by viewModels()
-    private val adapter = LineDepartureAdapter { line -> viewModel.toggleFavorite(line) }
+    private val lineSummaryAdapter = LineSummaryAdapter(
+        onSelected = { viewModel.selectLine(it) },
+        onToggleFavorite = { viewModel.toggleFavorite(it) }
+    )
+    private val lineDepartureAdapter = LineDepartureAdapter { viewModel.selectTrip(it) }
+    private val tripStopAdapter = TripStopAdapter()
 
+    private lateinit var searchTitle: TextView
+    private lateinit var detailHeader: View
+    private lateinit var backButton: MaterialButton
+    private lateinit var detailEyebrow: TextView
+    private lateinit var detailBadge: TextView
+    private lateinit var detailAgency: TextView
+    private lateinit var detailEndpoints: TextView
+    private lateinit var directionToggleButton: MaterialButton
+    private lateinit var searchRow: View
     private lateinit var queryInput: EditText
     private lateinit var dateButton: MaterialButton
     private lateinit var recycler: RecyclerView
+    private lateinit var emptyState: View
     private lateinit var emptyText: TextView
     private lateinit var favoritesHeader: TextView
 
@@ -42,14 +70,23 @@ class LineTimesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_line_times)
 
+        searchTitle = findViewById(R.id.lineTimesSearchTitle)
+        detailHeader = findViewById(R.id.lineTimesDetailHeader)
+        backButton = findViewById(R.id.lineTimesBackButton)
+        detailEyebrow = findViewById(R.id.lineTimesDetailEyebrow)
+        detailBadge = findViewById(R.id.lineTimesDetailBadge)
+        detailAgency = findViewById(R.id.lineTimesDetailAgency)
+        detailEndpoints = findViewById(R.id.lineTimesDetailEndpoints)
+        directionToggleButton = findViewById(R.id.lineTimesDirectionToggleButton)
+        searchRow = findViewById(R.id.lineTimesSearchRow)
         queryInput = findViewById(R.id.lineQueryInput)
         dateButton = findViewById(R.id.lineDateButton)
         recycler = findViewById(R.id.departuresRecycler)
+        emptyState = findViewById(R.id.lineTimesEmptyState)
         emptyText = findViewById(R.id.lineTimesEmptyText)
         favoritesHeader = findViewById(R.id.lineTimesFavoritesHeader)
 
         recycler.layoutManager = LinearLayoutManager(this)
-        recycler.adapter = adapter
 
         queryInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -58,55 +95,126 @@ class LineTimesActivity : AppCompatActivity() {
                 viewModel.search(s?.toString().orEmpty())
             }
         })
-
-        dateButton.setOnClickListener { pickDate() }
         // D-Pad-only devices: nextFocusDown into an empty/not-yet-laid-out
         // RecyclerView doesn't reliably land on its first item, so jump there
         // explicitly (same pattern as SearchLocationActivity/MainActivity).
-        dateButton.setOnKeyListener { _, keyCode, event ->
-            if (event.action == KeyEvent.ACTION_UP &&
-                keyCode == KeyEvent.KEYCODE_DPAD_DOWN && adapter.itemCount > 0
-            ) {
-                focusFirstDeparture()
-                true
-            } else {
-                false
+        queryInput.setOnKeyListener { _, keyCode, event -> maybeFocusFirstItem(keyCode, event) }
+        dateButton.setOnKeyListener { _, keyCode, event -> maybeFocusFirstItem(keyCode, event) }
+
+        backButton.setOnClickListener { goBack() }
+        directionToggleButton.setOnClickListener { viewModel.toggleDirection() }
+        dateButton.setOnClickListener { pickDate() }
+
+        onBackPressedDispatcher.addCallback(this) {
+            if (!viewModel.goBack()) {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
             }
         }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect { state ->
-                    dateButton.text = SimpleDateFormat("dd/MM", Locale.getDefault())
-                        .format(state.dateEpochMillis)
-                    adapter.submitList(state.results)
-                    adapter.setFavorites(state.favoriteLines)
-
-                    val showEmpty = when {
-                        !state.isAvailable -> true
-                        state.searched && state.results.isEmpty() -> true
-                        else -> false
-                    }
-                    emptyText.visibility = if (showEmpty) View.VISIBLE else View.GONE
-                    emptyText.text = when {
-                        !state.isAvailable -> getString(R.string.line_times_unavailable)
-                        state.showingFavorites -> getString(R.string.line_times_favorites_empty)
-                        else -> getString(R.string.line_times_no_results)
-                    }
-                    recycler.visibility = if (state.results.isEmpty()) View.GONE else View.VISIBLE
-                    favoritesHeader.visibility =
-                        if (state.showingFavorites && state.results.isNotEmpty()) View.VISIBLE else View.GONE
-                }
+                viewModel.uiState.collect { state -> render(state) }
             }
         }
     }
 
-    private fun focusFirstDeparture() {
+    private fun goBack() {
+        if (!viewModel.goBack()) finish()
+    }
+
+    private fun render(state: LineTimesViewModel.UiState) {
+        dateButton.text = SimpleDateFormat("dd/MM", Locale.getDefault()).format(state.dateEpochMillis)
+
+        when (val screen = state.screen) {
+            is LineTimesScreen.Search -> {
+                searchTitle.visibility = View.VISIBLE
+                detailHeader.visibility = View.GONE
+                searchRow.visibility = View.VISIBLE
+                dateButton.visibility = View.GONE
+
+                if (recycler.adapter !== lineSummaryAdapter) recycler.adapter = lineSummaryAdapter
+                lineSummaryAdapter.submitList(state.lineSummaries)
+                lineSummaryAdapter.setFavorites(state.favoriteLineIds)
+
+                val showEmpty = !state.isAvailable || (state.searched && state.lineSummaries.isEmpty())
+                emptyState.visibility = if (showEmpty) View.VISIBLE else View.GONE
+                emptyText.text = when {
+                    !state.isAvailable -> getString(R.string.line_times_unavailable)
+                    state.showingFavorites -> getString(R.string.line_times_favorites_empty)
+                    else -> getString(R.string.line_times_no_results)
+                }
+                recycler.visibility = if (state.lineSummaries.isEmpty()) View.GONE else View.VISIBLE
+                favoritesHeader.visibility =
+                    if (state.showingFavorites && state.lineSummaries.isNotEmpty()) View.VISIBLE else View.GONE
+            }
+
+            is LineTimesScreen.LineDetail -> {
+                searchTitle.visibility = View.GONE
+                detailHeader.visibility = View.VISIBLE
+                searchRow.visibility = View.GONE
+                dateButton.visibility = View.VISIBLE
+                favoritesHeader.visibility = View.GONE
+
+                detailEyebrow.text = getString(R.string.line_times_timetable_eyebrow)
+                bindLineIdentity(screen.line)
+                directionToggleButton.visibility =
+                    if (screen.line.pairedRouteId != null) View.VISIBLE else View.GONE
+
+                if (recycler.adapter !== lineDepartureAdapter) recycler.adapter = lineDepartureAdapter
+                lineDepartureAdapter.submitList(state.lineDepartures)
+
+                emptyState.visibility = if (state.lineDepartures.isEmpty()) View.VISIBLE else View.GONE
+                emptyText.text = getString(R.string.line_times_no_departures)
+                recycler.visibility = if (state.lineDepartures.isEmpty()) View.GONE else View.VISIBLE
+            }
+
+            is LineTimesScreen.TripDetail -> {
+                searchTitle.visibility = View.GONE
+                detailHeader.visibility = View.VISIBLE
+                searchRow.visibility = View.GONE
+                dateButton.visibility = View.GONE
+                favoritesHeader.visibility = View.GONE
+
+                detailEyebrow.text = getString(
+                    R.string.line_times_trip_stops_eyebrow, GtfsTime.format(screen.departure.departureTime)
+                )
+                bindLineIdentity(screen.line)
+                directionToggleButton.visibility = View.GONE
+
+                if (recycler.adapter !== tripStopAdapter) recycler.adapter = tripStopAdapter
+                tripStopAdapter.submitList(state.tripStops)
+
+                emptyState.visibility = if (state.tripStops.isEmpty()) View.VISIBLE else View.GONE
+                emptyText.text = getString(R.string.line_times_no_stops)
+                recycler.visibility = if (state.tripStops.isEmpty()) View.GONE else View.VISIBLE
+            }
+        }
+    }
+
+    private fun bindLineIdentity(line: LineSummary) {
+        detailBadge.text = line.routeShortName
+        detailAgency.text = line.agencyName.ifBlank { line.routeLongName }
+        detailEndpoints.text = LineSummaryAdapter.endpointsLabel(
+            line.firstStopName, line.lastStopName, ContextCompat.getColor(this, R.color.movitop_primary)
+        )
+    }
+
+    private fun maybeFocusFirstItem(keyCode: Int, event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_UP && keyCode == KeyEvent.KEYCODE_DPAD_DOWN &&
+            (recycler.adapter?.itemCount ?: 0) > 0
+        ) {
+            focusFirstItem()
+            return true
+        }
+        return false
+    }
+
+    private fun focusFirstItem() {
         recycler.post {
             val first = recycler.findViewHolderForAdapterPosition(0)?.itemView
                 ?: recycler.layoutManager?.findViewByPosition(0)
-            // The row itself isn't focusable — only its star button is.
-            first?.findViewById<View>(R.id.favoriteStarButton)?.requestFocus()
+            first?.requestFocus()
         }
     }
 
@@ -118,9 +226,9 @@ class LineTimesActivity : AppCompatActivity() {
             this,
             { _, year, month, day ->
                 calendar.set(year, month, day, 0, 0, 0)
-                // setDate() already re-runs the current search/favorites load
+                // setDate() already re-runs the current line's schedule
                 // against the new date (see LineTimesViewModel) — no need to
-                // call search() again here too.
+                // call anything else here too.
                 viewModel.setDate(calendar.timeInMillis)
             },
             calendar.get(Calendar.YEAR),

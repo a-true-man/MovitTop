@@ -31,8 +31,9 @@ enum class TransportMode(
  * same mode and duration ballpark.
  * @param departTimeText estimated clock time this option leaves ("14:20"), null when unknown.
  * @param arriveTimeText estimated clock time this option gets in, null when unknown.
- * @param departInMinutes minutes from now until departure, null when unknown — the
- * "leaves in X min" countdown shown on transit cards.
+ * @param departEpochMillis absolute departure time, null when unknown — formatted live as a
+ * "leaves in X" countdown by [RelativeTime] on every bind, so it never goes stale while the
+ * card stays on screen (see util/Ticker.kt).
  * @param distanceText already-formatted walk/bike distance (e.g. "1.3 ק״מ"), null for
  * modes where [priceText] is shown instead.
  * @param transitBadges the line(s) ridden, in order, for a [TransportMode.TRANSIT] option —
@@ -47,7 +48,7 @@ data class RouteOption(
     val subtitle: String? = null,
     val departTimeText: String? = null,
     val arriveTimeText: String? = null,
-    val departInMinutes: Long? = null,
+    val departEpochMillis: Long? = null,
     val distanceText: String? = null,
     val transitBadges: List<TransitLineBadge> = emptyList(),
     val viaStopText: String? = null
@@ -123,9 +124,17 @@ data class NearbyDeparture(
     val stopName: String,
     val stopPoint: GeoPoint,
     val departTimeText: String,
-    val minutesUntil: Long,
+    /** Absolute departure time — see [RouteOption.departEpochMillis] for why this isn't a frozen minute count. */
+    val departEpochMillis: Long,
     val distanceMeters: Double,
     val colorArgb: Int
+)
+
+/** One transit stop (bus/rail/etc.) as shown as a map marker. */
+data class TransitStopPlace(
+    val stopId: String,
+    val name: String,
+    val point: GeoPoint
 )
 
 interface MotisRepository {
@@ -160,4 +169,23 @@ interface MotisRepository {
 
     /** Upcoming departures within [radiusMeters] of [point], soonest first. */
     suspend fun nearbyDepartures(point: GeoPoint, radiusMeters: Int = 700): List<NearbyDeparture>
+
+    /** Transit stops inside the [southWest]..[northEast] map viewport (see [TransitStopPlace]). */
+    suspend fun stopsInBounds(southWest: GeoPoint, northEast: GeoPoint): List<TransitStopPlace>
+
+    /**
+     * Upcoming departures at [stopId], soonest first — powers the map's
+     * station-tap bottom sheet. [point] is that stop's own coordinate (used
+     * only to satisfy [NearbyDeparture]'s distance field, which the stop
+     * sheet doesn't display). [windowSeconds] widens the search past the
+     * default handful of near-term departures — pass a large value (e.g. a
+     * full day) together with a high [n] to get a line's full remaining
+     * schedule for the day when drilling into one route.
+     */
+    suspend fun departuresAtStop(
+        stopId: String,
+        point: GeoPoint,
+        windowSeconds: Int = 2 * 60 * 60,
+        n: Int = 20
+    ): List<NearbyDeparture>
 }

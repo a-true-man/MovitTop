@@ -24,6 +24,15 @@
 
     <style name="Theme.Movitop" parent="Base.Theme.Movitop" />
 
+    <!-- Splash screen: solid brand background so there's no white flash
+         between process start and the animated layout taking over. -->
+    <style name="Theme.Movitop.Splash" parent="Theme.Movitop">
+        <item name="android:windowBackground">@color/movitop_primary_dark</item>
+        <item name="android:statusBarColor">@color/movitop_primary_dark</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
     <!-- Quick-location chip styling (Waze-like solid rounded). -->
     <style name="Widget.Movitop.Chip" parent="Widget.Material3.Chip.Assist">
         <item name="chipBackgroundColor">@color/movitop_chip_bg</item>

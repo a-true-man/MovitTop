@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One line's upcoming departures at a map-tapped stop, collapsed into a
+     single card (see StopLineAdapter/GroupedLineDeparture) — the "next"
+     time/countdown on the right stays live (re-bound on a timer, see
+     util/Ticker.kt); lineUpcomingTimes lists a couple more of this line's
+     upcoming times so the user doesn't have to open the card just to see
+     them. Tapping the card opens this line's full schedule at this stop. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginVertical="5dp"
+    android:focusable="true"
+    android:focusableInTouchMode="false"
+    app:cardBackgroundColor="@color/movitop_surface"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/movitop_input_stroke"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:minHeight="44dp"
+            android:orientation="horizontal">
+
+            <View
+                android:id="@+id/lineColorDot"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
+                android:background="@drawable/bg_step_dot" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/lineTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/movitop_text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    tools:text="קו 480 · לכיוון ירושלים" />
+
+                <TextView
+                    android:id="@+id/lineAgency"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/movitop_text_secondary"
+                    android:textSize="12sp"
+                    tools:text="אגד" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:gravity="end"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/lineNextTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/movitop_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    tools:text="14:32" />
+
+                <TextView
+                    android:id="@+id/lineNextRelative"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/movitop_text_secondary"
+                    android:textSize="11sp"
+                    tools:text="בעוד 4 דק׳" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/lineUpcomingTimes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/movitop_text_secondary"
+            android:textSize="12sp"
+            android:visibility="gone"
+            tools:text="גם ב-14:16 · 14:46 · 15:16"
+            tools:visibility="visible" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

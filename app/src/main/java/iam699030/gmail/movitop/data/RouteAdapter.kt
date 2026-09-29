@@ -65,14 +65,10 @@ class RouteAdapter(
 
         bindBadges(holder.badgeRow, option.transitBadges)
 
-        val minutes = option.departInMinutes
-        if (minutes != null) {
+        val departEpoch = option.departEpochMillis
+        if (departEpoch != null && !RelativeTime.isStale(departEpoch)) {
             holder.departsIn.visibility = View.VISIBLE
-            holder.departsIn.text = if (minutes <= 0) {
-                context.getString(R.string.nearby_departing_now)
-            } else {
-                context.getString(R.string.nearby_minutes_until, minutes)
-            }
+            holder.departsIn.text = RelativeTime.describe(context, departEpoch)
         } else {
             holder.departsIn.visibility = View.GONE
         }
@@ -81,7 +77,7 @@ class RouteAdapter(
             holder.viaStop.visibility = View.GONE
         } else {
             holder.viaStop.visibility = View.VISIBLE
-            holder.viaStop.text = if (minutes != null) "· ${option.viaStopText}" else option.viaStopText
+            holder.viaStop.text = if (departEpoch != null) "· ${option.viaStopText}" else option.viaStopText
         }
     }
 

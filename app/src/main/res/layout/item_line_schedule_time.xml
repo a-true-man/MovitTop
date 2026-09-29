@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One scheduled time in a single line's full-schedule drill-down (see
+     LineScheduleAdapter) — no line number/badge repeated per row, since the
+     pane's header already names the line; just the time, and a live "in X"
+     label for the near-future ones (see util/Ticker.kt), blank once a time
+     has passed. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="20dp"
+    android:paddingVertical="12dp">
+
+    <TextView
+        android:id="@+id/scheduleTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/movitop_text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        tools:text="14:32" />
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_weight="1" />
+
+    <TextView
+        android:id="@+id/scheduleRelative"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/movitop_text_secondary"
+        android:textSize="13sp"
+        tools:text="בעוד 4 דק׳" />
+
+</LinearLayout>

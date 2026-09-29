@@ -1,6 +1,8 @@
 package iam699030.gmail.movitop.data
 
 import android.content.Context
+import android.util.Log
+import iam699030.gmail.movitop.BuildConfig
 import iam699030.gmail.movitop.MotisBinaryManager
 import iam699030.gmail.movitop.R
 import iam699030.gmail.movitop.data.api.IsoTime
@@ -25,6 +27,7 @@ import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
+private const val TAG = "RealMotisRepository"
 private const val MAX_WALK_MINUTES = 180
 private const val MAX_BIKE_MINUTES = 240
 private const val MAX_TRANSIT_OPTIONS = 4
@@ -45,7 +48,14 @@ class RealMotisRepository(
             OkHttpClient.Builder()
                 .addInterceptor(
                     HttpLoggingInterceptor().apply {
-                        level = HttpLoggingInterceptor.Level.BASIC
+                        // BASIC still builds a log line for every request/response
+                        // and writes it to Logcat — real, if small, CPU/IO cost
+                        // that release builds shouldn't pay for on every search.
+                        level = if (BuildConfig.DEBUG) {
+                            HttpLoggingInterceptor.Level.BASIC
+                        } else {
+                            HttpLoggingInterceptor.Level.NONE
+                        }
                     }
                 )
                 .connectTimeout(10, TimeUnit.SECONDS)
@@ -72,8 +82,9 @@ class RealMotisRepository(
             GeocodePlace(name = name, subtitle = context.getString(R.string.country_israel), lat = 0.0, lon = 0.0)
         }
         val remote = try {
-            api.geocode(trimmed).mapNotNull { it.toGeocodePlace() }
-        } catch (_: Exception) {
+            api.geocode(trimmed).mapNotNull { it.toGeocodePlace(context) }
+        } catch (e: Exception) {
+            Log.w(TAG, "geocode(\"$trimmed\") failed — is the MOTIS engine running?", e)
             emptyList()
         }
         return (remote + local)
@@ -117,7 +128,7 @@ class RealMotisRepository(
                     subtitle = transitSubtitle(itinerary),
                     departTimeText = IsoTime.toClockText(itinerary.startTime),
                     arriveTimeText = IsoTime.toClockText(itinerary.endTime),
-                    departInMinutes = minutesUntil(itinerary.startTime),
+                    departEpochMillis = IsoTime.toEpochMillis(itinerary.startTime),
                     transitBadges = transitLegs.map { TransitLineBadge(badgeLabel(it), LegColors.forLeg(it)) },
                     viaStopText = transitLegs.firstOrNull()?.from?.name?.let {
                         getString(R.string.route_option_via_stop, it)
@@ -206,7 +217,46 @@ class RealMotisRepository(
     override suspend fun nearbyDepartures(point: GeoPoint, radiusMeters: Int): List<NearbyDeparture> {
         val response = try {
             api.stoptimes(center = "${point.lat},${point.lon}", radius = radiusMeters)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "stoptimes($point, $radiusMeters) failed — is the MOTIS engine running?", e)
+            return emptyList()
+        }
+        return response.stopTimes.orEmpty().mapNotNull { it.toNearbyDeparture(point) }
+    }
+
+    override suspend fun stopsInBounds(southWest: GeoPoint, northEast: GeoPoint): List<TransitStopPlace> {
+        // MOTIS's /map/stops takes two diagonal *screen* corners, not a plain
+        // (minLat,minLon)/(maxLat,maxLon) AABB: "min" is the south-EAST corner
+        // (min latitude, max longitude) and "max" is the north-WEST corner
+        // (max latitude, min longitude) — see openapi.yaml's "lower right" /
+        // "upper left" wording for /api/v6/map/stops.
+        val places = try {
+            api.mapStops(
+                min = "${southWest.lat},${northEast.lon}",
+                max = "${northEast.lat},${southWest.lon}"
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "mapStops($southWest, $northEast) failed — is the MOTIS engine running?", e)
+            return emptyList()
+        }
+        return places.mapNotNull { place ->
+            val stopId = place.stopId ?: return@mapNotNull null
+            val lat = place.lat ?: return@mapNotNull null
+            val lon = place.lon ?: return@mapNotNull null
+            TransitStopPlace(stopId, place.name ?: "", GeoPoint(lat, lon))
+        }
+    }
+
+    override suspend fun departuresAtStop(
+        stopId: String,
+        point: GeoPoint,
+        windowSeconds: Int,
+        n: Int
+    ): List<NearbyDeparture> {
+        val response = try {
+            api.stoptimesForStop(stopId = stopId, n = n, window = windowSeconds)
+        } catch (e: Exception) {
+            Log.w(TAG, "stoptimesForStop(\"$stopId\") failed — is the MOTIS engine running?", e)
             return emptyList()
         }
         return response.stopTimes.orEmpty().mapNotNull { it.toNearbyDeparture(point) }
@@ -229,7 +279,7 @@ class RealMotisRepository(
             stopName = stopPlace.name ?: "",
             stopPoint = stopPoint,
             departTimeText = IsoTime.toClockText(departIso) ?: "",
-            minutesUntil = ((epoch - System.currentTimeMillis()) / 60_000.0).roundToInt().toLong().coerceAtLeast(0L),
+            departEpochMillis = epoch,
             distanceMeters = haversineMeters(origin, stopPoint),
             colorArgb = routeColor?.takeIf { it.isNotBlank() }?.let { LegColors.fallbackFor(it) }
                 ?: LegColors.fallbackFor(label)
@@ -275,12 +325,6 @@ class RealMotisRepository(
     private fun transitSubtitle(itinerary: ItineraryDto): String? {
         val lines = itinerary.legs.orEmpty().filter { isTransitLeg(it) }.map { lineLabel(it) }
         return lines.takeIf { it.isNotEmpty() }?.joinToString(" + ")
-    }
-
-    /** Minutes from now until [iso], clamped to 0 (never negative) — null if unparseable. */
-    private fun minutesUntil(iso: String?): Long? {
-        val epoch = IsoTime.toEpochMillis(iso) ?: return null
-        return ((epoch - System.currentTimeMillis()) / 60_000.0).roundToInt().toLong().coerceAtLeast(0L)
     }
 
     private fun distanceText(meters: Double): String =
@@ -424,14 +468,13 @@ class RealMotisRepository(
     }
 
     private fun driverPrice(meters: Double): String {
-        val price = (8 + meters / 1000.0 * 1.2).roundToInt()
+        val price = estimateDriverPrice(meters / 1000.0)
         return "≈$price₪"
     }
 
     private fun taxiPrice(meters: Double): String {
-        val low = (12 + meters / 1000.0 * 3.5).roundToInt()
-        val high = (low * 1.25).roundToInt()
-        return "≈$low-$high₪"
+        val price = estimateTaxiPrice(meters / 1000.0)
+        return "≈$price₪"
     }
 
     /** [epochMillis] null means "now". */

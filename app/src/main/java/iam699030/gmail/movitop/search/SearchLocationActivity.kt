@@ -50,6 +50,12 @@ class SearchLocationActivity : AppCompatActivity() {
 
     private val resultAdapter = GeocodeResultAdapter { place -> returnPlace(place) }
 
+    // Mirrors viewModel.pendingPinnedSlot for rendering (see refreshPinnedRowTexts) —
+    // a plain var on the ViewModel isn't itself observable as a flow.
+    private var pickingSlot: PinnedSlot? = null
+    private var homePlaceName: String? = null
+    private var workPlaceName: String? = null
+
     private val requestLocationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (granted) locateCurrentPosition() else showLocationUnavailable() }
@@ -149,12 +155,14 @@ class SearchLocationActivity : AppCompatActivity() {
                 }
                 launch {
                     viewModel.homePlace.collect { place ->
-                        homeText.text = place?.name ?: getString(R.string.pinned_set_home)
+                        homePlaceName = place?.name
+                        refreshPinnedRowTexts()
                     }
                 }
                 launch {
                     viewModel.workPlace.collect { place ->
-                        workText.text = place?.name ?: getString(R.string.pinned_set_work)
+                        workPlaceName = place?.name
+                        refreshPinnedRowTexts()
                     }
                 }
             }
@@ -210,12 +218,40 @@ class SearchLocationActivity : AppCompatActivity() {
 
     private fun enterPendingPinMode(slot: PinnedSlot) {
         viewModel.pendingPinnedSlot = slot
+        pickingSlot = slot
+        refreshPinnedRowTexts()
         val prompt = when (slot) {
             PinnedSlot.HOME -> R.string.pinned_pick_prompt_home
             PinnedSlot.WORK -> R.string.pinned_pick_prompt_work
         }
-        Snackbar.make(searchInput, prompt, Snackbar.LENGTH_LONG).show()
+        // The prompt alone (a Snackbar that disappears in a few seconds) left
+        // no way to back out of "picking" mode short of aborting the whole
+        // origin/destination flow with Back — the row text staying on
+        // "Choosing…" (see refreshPinnedRowTexts) is the persistent signal,
+        // and this action is the actual way out.
+        Snackbar.make(searchInput, prompt, Snackbar.LENGTH_LONG)
+            .setAction(R.string.pinned_pick_cancel) { cancelPendingPinMode() }
+            .show()
         searchInput.requestFocus()
+    }
+
+    private fun cancelPendingPinMode() {
+        viewModel.pendingPinnedSlot = null
+        pickingSlot = null
+        refreshPinnedRowTexts()
+    }
+
+    private fun refreshPinnedRowTexts() {
+        homeText.text = when {
+            pickingSlot == PinnedSlot.HOME -> getString(R.string.pinned_picking_active)
+            homePlaceName != null -> homePlaceName
+            else -> getString(R.string.pinned_set_home)
+        }
+        workText.text = when {
+            pickingSlot == PinnedSlot.WORK -> getString(R.string.pinned_picking_active)
+            workPlaceName != null -> workPlaceName
+            else -> getString(R.string.pinned_set_work)
+        }
     }
 
     private fun renderList() {

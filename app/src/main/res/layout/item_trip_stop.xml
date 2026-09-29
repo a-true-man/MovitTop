@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One stop in a trip's full stop-by-stop list (see TripStopAdapter) — a
+     continuous rail runs through every row's dot, so the list reads as the
+     physical line it represents rather than a plain list. railTop/railBottom
+     are hidden on the first/last row so the line starts and ends exactly at
+     the terminus dots. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:minHeight="52dp"
+    android:orientation="horizontal"
+    android:paddingHorizontal="20dp">
+
+    <LinearLayout
+        android:layout_width="28dp"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <View
+            android:id="@+id/tripStopRailTop"
+            android:layout_width="2dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@color/movitop_primary" />
+
+        <View
+            android:id="@+id/tripStopDot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/bg_trip_stop_dot" />
+
+        <View
+            android:id="@+id/tripStopRailBottom"
+            android:layout_width="2dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@color/movitop_primary" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tripStopName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_weight="1"
+        android:paddingVertical="10dp"
+        android:textColor="@color/movitop_text_primary"
+        android:textSize="15sp"
+        tools:text="ת. מרכזית חוף הכרמל/רציפים עירוני" />
+
+    <TextView
+        android:id="@+id/tripStopArrival"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textColor="@color/movitop_primary"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        tools:text="14:35" />
+
+</LinearLayout>

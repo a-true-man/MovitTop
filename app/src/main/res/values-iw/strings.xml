@@ -1,4 +1,7 @@
 <resources>
+    <!-- Splash screen (Hebrew) -->
+    <string name="splash_loading_data">טוען נתונים…</string>
+
     <!-- MOTIS foreground service (Hebrew) -->
     <string name="motis_channel_name">מנוע הניווט</string>
     <string name="motis_channel_description">משאיר את מנוע הניתוב הלא-מקוון פעיל</string>
@@ -16,6 +19,11 @@
     <string name="search_location_hint">חפש כתובת או מקום\u2026</string>
     <string name="search_no_results">לא נמצאו מקומות. נסו שם אחר.</string>
     <string name="search_use_current_location">המיקום הנוכחי שלי</string>
+    <string name="place_type_stop">תחנה</string>
+    <string name="place_type_coordinate">נקודה</string>
+    <string name="place_type_place">מקום</string>
+    <string name="place_type_street">רחוב</string>
+    <string name="place_type_address">כתובת</string>
     <string name="search_locating_current_location">מאתר מיקום…</string>
     <string name="country_israel">ישראל</string>
     <string name="recent_places_title">לאחרונה</string>
@@ -23,12 +31,14 @@
     <string name="pinned_set_work">הגדרת עבודה</string>
     <string name="pinned_pick_prompt_home">בחרו מקום לשמירה כ\'בית\'</string>
     <string name="pinned_pick_prompt_work">בחרו מקום לשמירה כ\'עבודה\'</string>
+    <string name="pinned_picking_active">בוחרים…</string>
+    <string name="pinned_pick_cancel">ביטול</string>
     <string name="pinned_saved_home">נשמר כבית</string>
     <string name="pinned_saved_work">נשמר כעבודה</string>
 
     <!-- Results bottom sheet (Hebrew) -->
     <string name="mode_transit">תחבורה ציבורית</string>
-    <string name="mode_driver">נהג</string>
+    <string name="mode_driver">דרייבר</string>
     <string name="mode_bike">אופניים</string>
     <string name="mode_walking">הליכה</string>
     <string name="mode_taxi">מונית</string>
@@ -61,8 +71,16 @@
     <string name="route_option_via_stop">מתחנת %1$s</string>
     <string name="distance_km">%.1f ק״מ</string>
     <string name="distance_meters">%1$d מ׳</string>
-    <string name="direct_modes_title">הליכה ואופניים</string>
+    <string name="direct_modes_title">עוד דרכים להגיע</string>
     <string name="transit_options_title">מסלולים מוצעים</string>
+    <string name="route_switch_title">מעבר מהיר בין מסלולים</string>
+
+    <!-- Driver / taxi station picker (Hebrew) -->
+    <string name="car_service_call_description">התקשרות</string>
+    <string name="driver_stations_dialog_title">דרייבר — התקשרות לתחנה</string>
+    <string name="driver_stations_dialog_subtitle">בחרו שירות כדי להתקשר ולהזמין נסיעה</string>
+    <string name="taxi_stations_dialog_title">מונית — תחנות באזור %1$s</string>
+    <string name="taxi_stations_dialog_subtitle">בחרו תחנה כדי להתקשר ולהזמין נסיעה</string>
 
     <!-- Turn-by-turn walking directions (Hebrew) -->
     <string name="nav_walk_continue_to">המשך אל %1$s</string>
@@ -82,9 +100,12 @@
 
     <!-- Offline map (Hebrew) -->
     <string name="map_missing_log">קובץ מפה לא נמצא ב-%1$s — מוצגת מפה ריקה.</string>
+    <string name="no_offline_data_banner">עדיין לא הותקנו נתוני תחבורה ציבורית במכשיר זה.</string>
+    <string name="no_offline_data_action">ייבוא</string>
 
     <!-- Network / errors (Hebrew) -->
     <string name="search_error_network">אופס, נפל לי הקשר ללוויין 🛰️. האם מנוע הניתוב פועל?</string>
+    <string name="search_error_no_data">עדיין לא הותקנו נתוני תחבורה ציבורית במכשיר זה. הקישו על כפתור הייבוא כדי להוסיף אותם.</string>
     <string name="search_error_place">לא הצלחתי למצוא את %1$s 🗺️. נסו שם מדויק יותר, למשל עם שם העיר.</string>
     <string name="search_no_routes">לא מצאתי מסלול ליעד הזה. אולי ננסה יעד אחר?</string>
 
@@ -128,11 +149,16 @@
     <string name="line_times_button_description">זמני קווים</string>
     <string name="line_times_title">זמני קווים</string>
     <string name="line_times_hint">מספר או שם קו…</string>
-    <string name="line_times_from_stop">יוצא מ: %1$s</string>
-    <string name="line_times_no_results">לא נמצאו יציאות לקו הזה ביום שנבחר.</string>
+    <string name="line_times_no_results">לא נמצאו קווים לחיפוש הזה.</string>
+    <string name="line_times_no_departures">לא נמצאו יציאות לכיוון הזה ביום שנבחר.</string>
+    <string name="line_times_no_stops">לא נמצאו תחנות לנסיעה הזו.</string>
     <string name="line_times_unavailable">נתוני זמני הקווים עדיין לא מותקנים על המכשיר.</string>
     <string name="line_times_favorites_title">קווים שמורים</string>
     <string name="line_times_favorites_empty">אין עדיין קווים שמורים. חפשו קו ולחצו על הכוכב כדי לשמור אותו.</string>
+    <string name="line_times_back_description">חזרה</string>
+    <string name="line_times_direction_toggle_description">החלפת כיוון</string>
+    <string name="line_times_timetable_eyebrow">לוח זמנים</string>
+    <string name="line_times_trip_stops_eyebrow">כל התחנות · יציאה ב-%1$s</string>
     <string name="favorite_star_add_description">שמור קו</string>
     <string name="favorite_star_remove_description">הסר קו שמור</string>
 
@@ -147,6 +173,7 @@
     <string name="nearby_title">בקרבת מקום</string>
     <string name="nearby_subtitle">היציאות הקרובות אליך</string>
     <string name="nearby_empty">לא נמצאו יציאות בקרבת מקום. נסו להתקרב לתחנה, או ודאו ש-GPS פעיל.</string>
+    <string name="nearby_no_offline_data">עדיין לא הותקנו נתוני תחבורה ציבורית במכשיר זה — יש לייבא אותם ממסך המפה הראשי קודם.</string>
     <string name="nearby_locating">מאתר את המיקום שלך…</string>
     <string name="nearby_minutes_until">בעוד %1$d דק׳</string>
     <string name="nearby_departing_now">יוצא עכשיו</string>
@@ -157,9 +184,52 @@
     <!-- Offline data import (Hebrew) -->
     <string name="data_import_button_description">ייבוא נתוני תחבורה מעודכנים</string>
     <string name="data_import_title">ייבוא נתוני תחבורה מעודכנים</string>
-    <string name="data_import_explanation">בחר קובץ חבילת נתונים (שהועתק למכשיר דרך כבל USB/כרטיס SD מהמחשב, לאחר הרצת compile_motis_graph.sh ו-package_motis_data.sh). לא נעשה שימוש באינטרנט — הקובץ חייב כבר להיות על המכשיר.</string>
+    <string name="data_import_explanation">בחר קובץ חבילת נתונים (שהועתק למכשיר דרך כבל USB/כרטיס SD מהמחשב)</string>
     <string name="data_import_pick_file">בחר קובץ עדכון…</string>
     <string name="data_import_in_progress">מייבא… זה עשוי לקחת רגע.</string>
     <string name="data_import_success">הייבוא הושלם (%1$d קבצים). המנוע הופעל מחדש עם הנתונים החדשים.</string>
     <string name="data_import_failure">הייבוא נכשל: %1$s</string>
+    <string name="data_import_error_open_failed">לא ניתן היה לפתוח את הקובץ שנבחר</string>
+    <string name="data_import_error_invalid_package">הקובץ שנבחר אינו חבילת נתונים תקינה (חסר config.yml)</string>
+    <string name="data_import_error_unknown">שגיאה לא ידועה</string>
+
+    <!-- Map station / Rav-Kav charging markers (Hebrew) -->
+    <string name="dialog_close_button">סגור</string>
+    <string name="stop_info_no_routes">לא נמצאו יציאות קרובות בתחנה זו כרגע.</string>
+    <string name="stop_departures_back_description">חזרה</string>
+    <string name="stop_line_schedule_title">קו %1$s · %2$s</string>
+    <string name="stop_line_also_at">גם ב-%1$s</string>
+
+    <!-- Relative time formatting (RelativeTime.kt) (Hebrew) -->
+    <string name="weekday_sunday">ראשון</string>
+    <string name="weekday_monday">שני</string>
+    <string name="weekday_tuesday">שלישי</string>
+    <string name="weekday_wednesday">רביעי</string>
+    <string name="weekday_thursday">חמישי</string>
+    <string name="weekday_friday">שישי</string>
+    <string name="weekday_saturday">שבת</string>
+    <string name="relative_hour_singular">שעה</string>
+    <string name="relative_hour_dual">שעתיים</string>
+    <string name="relative_hours_plural">%1$d שעות</string>
+    <string name="relative_in_hours_only">בעוד %1$s</string>
+    <string name="relative_in_hours_and_minutes">בעוד %1$s ו-%2$d דק׳</string>
+    <string name="relative_departs_on_day">יוצא ביום %1$s בשעה %2$s</string>
+    <string name="ravkav_label_city">עיר</string>
+    <string name="ravkav_label_address">כתובת</string>
+    <string name="ravkav_label_agency">מפעיל</string>
+    <string name="ravkav_label_phone">טלפון</string>
+    <string name="ravkav_label_hours">שעות פעילות</string>
+    <string name="ravkav_station_generic_name">עמדת טעינת רב-קו</string>
+    <string name="ravkav_accepts_cash">ניתן לשלם במזומן</string>
+    <string name="ravkav_accepts_credit_card">ניתן לשלם באשראי</string>
+    <string name="ravkav_accessible">נגיש לנכים</string>
+    <string name="ravkav_hours_closed">סגור</string>
+    <string name="ravkav_days_sun_thu">א׳-ה׳</string>
+    <string name="ravkav_days_sun">א׳</string>
+    <string name="ravkav_days_mon">ב׳</string>
+    <string name="ravkav_days_tue">ג׳</string>
+    <string name="ravkav_days_wed">ד׳</string>
+    <string name="ravkav_days_thu">ה׳</string>
+    <string name="ravkav_days_fri">ו׳</string>
+    <string name="ravkav_days_sat">ש׳</string>
 </resources>

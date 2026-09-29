@@ -3,8 +3,11 @@ package iam699030.gmail.movitop
 import android.Manifest
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
@@ -32,15 +35,30 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import iam699030.gmail.movitop.MainViewModel.RoutingState
+import iam699030.gmail.movitop.data.CallableStation
 import iam699030.gmail.movitop.data.DirectModeAdapter
+import iam699030.gmail.movitop.data.DriverStations
 import iam699030.gmail.movitop.data.GeoPoint
 import iam699030.gmail.movitop.data.MapLeg
+import iam699030.gmail.movitop.data.MotisRepository
+import iam699030.gmail.movitop.data.NearbyDeparture
+import iam699030.gmail.movitop.data.RavKavStationsRepository
+import iam699030.gmail.movitop.data.RealMotisRepository
 import iam699030.gmail.movitop.data.RouteAdapter
+import iam699030.gmail.movitop.data.RouteOption
+import iam699030.gmail.movitop.data.RouteSwitchAdapter
+import iam699030.gmail.movitop.data.LineScheduleAdapter
+import iam699030.gmail.movitop.data.StopLineAdapter
+import iam699030.gmail.movitop.data.groupByLine
+import iam699030.gmail.movitop.data.TaxiStations
+import iam699030.gmail.movitop.data.TransitStopPlace
 import iam699030.gmail.movitop.data.TransportMode
 import iam699030.gmail.movitop.data.RouteStepAdapter
 import iam699030.gmail.movitop.data.TripTime
 import iam699030.gmail.movitop.map.MapThemeHelper
+import iam699030.gmail.movitop.map.StationMarkersController
 import iam699030.gmail.movitop.nav.LocationTracker
+import iam699030.gmail.movitop.util.tickEvery
 import iam699030.gmail.movitop.nav.PendingNavigation
 import iam699030.gmail.movitop.nearby.NearbyActivity
 import iam699030.gmail.movitop.search.SearchLocationActivity
@@ -77,10 +95,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var directModesTitle: TextView
     private lateinit var transitOptionsTitle: TextView
     private lateinit var detailsRecycler: RecyclerView
+    private lateinit var routeSwitchTitle: TextView
+    private lateinit var routeSwitchRecycler: RecyclerView
     private lateinit var summaryContainer: LinearLayout
     private lateinit var detailsContainer: LinearLayout
     private lateinit var detailsDuration: TextView
     private lateinit var startNavigationButton: MaterialButton
+    private lateinit var stopDeparturesContainer: LinearLayout
+    private lateinit var stopDeparturesTitle: TextView
+    private lateinit var stopBackButton: View
+    private lateinit var stopDeparturesRecycler: RecyclerView
+    private lateinit var stopDeparturesEmpty: TextView
     private lateinit var settingsButton: MaterialButton
     private lateinit var nearbyButton: MaterialButton
     private lateinit var lineTimesButton: MaterialButton
@@ -92,16 +117,51 @@ class MainActivity : AppCompatActivity() {
     private val requestLocationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (granted) centerOnMyLocation() }
+
+    // Android 13+ hides a foreground service's notification (the on-device
+    // routing engine's only visible sign of life) until this is granted —
+    // requested once up front so the service doesn't start invisibly.
+    private val requestNotificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
 
     private val routeAdapter = RouteAdapter { option -> viewModel.selectRoute(option) }
     private val directModeAdapter = DirectModeAdapter(
-        onRouteSelected = { option -> viewModel.selectRoute(option) },
+        onRouteSelected = { option -> handleRouteOptionTap(option) },
         onDownPressed = { focusFirstTransitOptionIfAny() }
     )
     private val stepAdapter = RouteStepAdapter()
+    private val routeSwitchAdapter = RouteSwitchAdapter(
+        onRouteSelected = { option -> handleRouteOptionTap(option) },
+        onDownPressed = { focusFirstDetailStepIfAny() }
+    )
+
+    // Every option from the last search, kept for the detail pane's
+    // quick-switch row (see routeSwitchAdapter) — the ViewModel's own
+    // `routes` flow isn't re-collected there, so MainActivity caches it.
+    private var allRoutes: List<RouteOption> = emptyList()
 
     private val routeOverlays = mutableListOf<Polyline>()
+
+    private val motisRepository: MotisRepository by lazy { RealMotisRepository(this) }
+    private val ravKavRepository: RavKavStationsRepository by lazy { RavKavStationsRepository(this) }
+    private lateinit var stationMarkersController: StationMarkersController
+
+    // Top-level pane: one card per line (see GroupedLineDeparture). Drilled-in
+    // pane: that one line's full schedule at this stop, times only (see
+    // LineScheduleAdapter's kdoc for why it doesn't repeat the line badge).
+    // Both are bound to the same stopDeparturesRecycler, swapped in as its
+    // .adapter depending on which pane is showing.
+    private val stopLineAdapter = StopLineAdapter { grouped -> showLineScheduleAtStop(grouped.routeShortName) }
+    private val lineScheduleAdapter = LineScheduleAdapter()
+
+    // The stop a map tap last opened the results sheet for, and its last
+    // fetched departures — kept so the "back" arrow from a line's full
+    // schedule (see showLineScheduleAtStop) can restore the mixed list
+    // without a second network round trip.
+    private var currentStopContext: TransitStopPlace? = null
+    private var currentStopDepartures: List<NearbyDeparture> = emptyList()
 
     private val searchLocationLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -148,6 +208,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private var pendingSearchField: String = SearchLocationActivity.FIELD_ORIGIN
+    private var noOfflineDataSnackbar: Snackbar? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -175,11 +236,19 @@ class MainActivity : AppCompatActivity() {
         directModesTitle = findViewById(R.id.directModesTitle)
         transitOptionsTitle = findViewById(R.id.transitOptionsTitle)
         detailsRecycler = findViewById(R.id.detailsRecycler)
+        routeSwitchTitle = findViewById(R.id.routeSwitchTitle)
+        routeSwitchRecycler = findViewById(R.id.routeSwitchRecycler)
         summaryContainer = findViewById(R.id.summaryContainer)
         detailsContainer = findViewById(R.id.detailsContainer)
         detailsDuration = findViewById(R.id.detailsDuration)
         startNavigationButton = findViewById(R.id.startNavigationButton)
         startNavigationButton.setOnClickListener { startLiveNavigation() }
+        stopDeparturesContainer = findViewById(R.id.stopDeparturesContainer)
+        stopDeparturesTitle = findViewById(R.id.stopDeparturesTitle)
+        stopBackButton = findViewById(R.id.stopBackButton)
+        stopBackButton.setOnClickListener { returnToStopDepartures() }
+        stopDeparturesRecycler = findViewById(R.id.stopDeparturesRecycler)
+        stopDeparturesEmpty = findViewById(R.id.stopDeparturesEmpty)
         settingsButton = findViewById(R.id.settingsButton)
         settingsButton.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         nearbyButton = findViewById(R.id.nearbyButton)
@@ -202,7 +271,54 @@ class MainActivity : AppCompatActivity() {
         setupSearchForm()
         observeViewModel()
 
+        requestNotificationPermissionIfNeeded()
         MotisForegroundService.start(this)
+
+        // Re-render already-fetched "leaves in X" labels on a timer so they
+        // stay accurate as time passes, without a fresh engine query — see
+        // RelativeTime. Covers the route-search summary cards and whichever
+        // of the two stop-tap adapters is currently attached.
+        tickEvery(TICK_INTERVAL_MILLIS) {
+            routeAdapter.notifyDataSetChanged()
+            stopDeparturesRecycler.adapter?.notifyDataSetChanged()
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-checked here (not just onCreate) so the banner clears itself as
+        // soon as the user comes back from DataImportActivity having picked
+        // a package — no need to relaunch the app to see it disappear.
+        checkOfflineDataAvailability()
+    }
+
+    /**
+     * A fresh install (or one whose graph was never pushed) has no routable
+     * data at all — every search then silently fails with the same generic
+     * network-error text as a real outage, and the map just renders empty.
+     * Surface that state explicitly instead, with a direct way to fix it.
+     */
+    private fun checkOfflineDataAvailability() {
+        if (MotisForegroundService.hasOfflineData(this)) {
+            noOfflineDataSnackbar?.dismiss()
+            noOfflineDataSnackbar = null
+            return
+        }
+        if (noOfflineDataSnackbar?.isShown == true) return
+        noOfflineDataSnackbar = Snackbar.make(
+            findViewById(R.id.main), R.string.no_offline_data_banner, Snackbar.LENGTH_INDEFINITE
+        ).setAction(R.string.no_offline_data_action) {
+            startActivity(Intent(this, DataImportActivity::class.java))
+        }.also { it.show() }
     }
 
     private fun setupMap() {
@@ -256,6 +372,18 @@ class MainActivity : AppCompatActivity() {
 
         mapView.model.mapViewPosition.center = LatLong(31.9, 35.0)
         mapView.model.mapViewPosition.zoomLevel = 8.toByte()
+
+        // Transit-stop + Rav-Kav charging-station markers (see StationMarkersController):
+        // only appear once zoomed in, recomputed for the viewport on every pan/zoom.
+        stationMarkersController = StationMarkersController(
+            context = this,
+            mapView = mapView,
+            scope = lifecycleScope,
+            motisRepository = motisRepository,
+            ravKavRepository = ravKavRepository,
+            onStopSelected = { stop -> showStopDepartures(stop) }
+        )
+        stationMarkersController.start()
     }
 
     private fun zoomBy(delta: Int) {
@@ -343,6 +471,10 @@ class MainActivity : AppCompatActivity() {
         directModesRecycler.adapter = directModeAdapter
         detailsRecycler.layoutManager = LinearLayoutManager(this)
         detailsRecycler.adapter = stepAdapter
+        routeSwitchRecycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        routeSwitchRecycler.adapter = routeSwitchAdapter
+        stopDeparturesRecycler.layoutManager = LinearLayoutManager(this)
+        stopDeparturesRecycler.adapter = stopLineAdapter
 
         bottomSheetBehavior = BottomSheetBehavior.from(sheet).apply {
             isHideable = true
@@ -354,10 +486,10 @@ class MainActivity : AppCompatActivity() {
             override fun onStateChanged(bottomSheet: View, newState: Int) {
                 when (newState) {
                     BottomSheetBehavior.STATE_EXPANDED -> {
-                        val target = if (detailsContainer.visibility == View.VISIBLE) {
-                            detailsRecycler
-                        } else {
-                            resultsRecycler
+                        val target = when {
+                            stopDeparturesContainer.visibility == View.VISIBLE -> stopDeparturesRecycler
+                            detailsContainer.visibility == View.VISIBLE -> detailsRecycler
+                            else -> resultsRecycler
                         }
                         focusFirstChild(target)
                     }
@@ -373,6 +505,7 @@ class MainActivity : AppCompatActivity() {
                 when {
                     viewModel.uiState.value.routingState is RoutingState.ViewingRouteDetails ->
                         viewModel.backToSummary()
+                    stopBackButton.visibility == View.VISIBLE -> returnToStopDepartures()
                     bottomSheetBehavior.state != BottomSheetBehavior.STATE_HIDDEN ->
                         bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
                     else -> {
@@ -461,6 +594,92 @@ class MainActivity : AppCompatActivity() {
         } else {
             getString(R.string.trip_time_depart_at, timeText)
         }
+    }
+
+    /**
+     * DRIVER/TAXI cards don't lead to the map/step detail pane like every
+     * other mode — there's nothing useful to navigate ("drive to X" isn't a
+     * turn-by-turn route the app owns) — instead they open a station picker
+     * the user calls to actually book the ride.
+     */
+    private fun handleRouteOptionTap(option: RouteOption) {
+        when (option.mode) {
+            TransportMode.DRIVER -> showDriverStationsDialog()
+            TransportMode.TAXI -> showTaxiStationsDialog()
+            else -> viewModel.selectRoute(option)
+        }
+    }
+
+    private fun showDriverStationsDialog() {
+        showCarServiceStationsDialog(
+            title = getString(R.string.driver_stations_dialog_title),
+            subtitle = getString(R.string.driver_stations_dialog_subtitle),
+            stations = DriverStations.nationwide
+        )
+    }
+
+    private fun showTaxiStationsDialog() {
+        lifecycleScope.launch {
+            val cityStations = TaxiStations.nearest(resolveOriginPoint())
+            showCarServiceStationsDialog(
+                title = getString(R.string.taxi_stations_dialog_title, cityStations.city),
+                subtitle = getString(R.string.taxi_stations_dialog_subtitle),
+                stations = cityStations.stations
+            )
+        }
+    }
+
+    /**
+     * The exact point the user picked (search result / GPS fix) when there is
+     * one — otherwise best-effort geocode of the free-text origin, so the
+     * taxi station list still matches the right city instead of silently
+     * defaulting to whichever city happens to be first in [TaxiStations].
+     */
+    private suspend fun resolveOriginPoint(): GeoPoint? {
+        viewModel.uiState.value.originCoord?.let { return it }
+        val query = viewModel.uiState.value.originQuery.trim()
+        if (query.isEmpty()) return null
+        return try {
+            motisRepository.geocodePlaces(query).firstOrNull()?.let { GeoPoint(it.lat, it.lon) }
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't geocode \"$query\" for taxi-station lookup", e)
+            null
+        }
+    }
+
+    private fun showCarServiceStationsDialog(title: String, subtitle: String, stations: List<CallableStation>) {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_car_service_stations, null)
+        view.findViewById<TextView>(R.id.carServiceStationsTitle).text = title
+        view.findViewById<TextView>(R.id.carServiceStationsSubtitle).text = subtitle
+
+        val list = view.findViewById<LinearLayout>(R.id.carServiceStationsList)
+        stations.forEach { station ->
+            val row = LayoutInflater.from(this).inflate(R.layout.item_car_service_station, list, false)
+            row.findViewById<TextView>(R.id.stationName).text = station.name
+            row.findViewById<TextView>(R.id.stationSubtitle).text =
+                listOfNotNull(formatPhoneForDisplay(station.phone), station.subtitle).joinToString(" · ")
+            row.setOnClickListener { dialPhone(station.phone) }
+            list.addView(row)
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setView(view)
+            .setNegativeButton(R.string.dialog_close_button, null)
+            .show()
+    }
+
+    private fun dialPhone(phone: String) {
+        try {
+            startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+        } catch (e: ActivityNotFoundException) {
+            Log.w(TAG, "No dialer app available for tel:$phone", e)
+        }
+    }
+
+    private fun formatPhoneForDisplay(phone: String): String = when (phone.length) {
+        9 -> "${phone.substring(0, 2)}-${phone.substring(2)}"
+        10 -> "${phone.substring(0, 3)}-${phone.substring(3, 6)}-${phone.substring(6)}"
+        else -> phone
     }
 
     private fun showTripTimeDialog() {
@@ -562,6 +781,8 @@ class MainActivity : AppCompatActivity() {
                         // horizontal row above the transit list, matching how
                         // Moovit separates them instead of one mixed list.
                         val all = routes.orEmpty()
+                        allRoutes = all
+                        routeSwitchAdapter.submitList(all)
                         val direct = all.filter { it.mode != TransportMode.TRANSIT }
                         val transit = all.filter { it.mode == TransportMode.TRANSIT }
 
@@ -614,9 +835,17 @@ class MainActivity : AppCompatActivity() {
             is RoutingState.ViewingRouteDetails -> {
                 showDetailsPane()
                 detailsDuration.text = formatDuration(state.selectedRoute.durationMinutes)
+                routeSwitchAdapter.setSelectedId(state.selectedRoute.id)
+                val showSwitcher = allRoutes.size > 1
+                routeSwitchTitle.visibility = if (showSwitcher) View.VISIBLE else View.GONE
+                routeSwitchRecycler.visibility = if (showSwitcher) View.VISIBLE else View.GONE
             }
             else -> {
-                if (state !is RoutingState.Calculating) {
+                // Every uiState emission re-renders here, including ones
+                // unrelated to routing (e.g. a keystroke in the search
+                // fields) — don't let an unchanged Idle state clobber a
+                // stop-departures sheet the user has open from a map tap.
+                if (state !is RoutingState.Calculating && stopDeparturesContainer.visibility != View.VISIBLE) {
                     bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
                 }
                 updateFocusChain()
@@ -627,16 +856,93 @@ class MainActivity : AppCompatActivity() {
     private fun showSummaryPane() {
         summaryContainer.visibility = View.VISIBLE
         detailsContainer.visibility = View.GONE
+        stopDeparturesContainer.visibility = View.GONE
     }
 
     private fun showDetailsPane() {
         summaryContainer.visibility = View.GONE
         detailsContainer.visibility = View.VISIBLE
+        stopDeparturesContainer.visibility = View.GONE
+    }
+
+    private fun showStopPane() {
+        summaryContainer.visibility = View.GONE
+        detailsContainer.visibility = View.GONE
+        stopDeparturesContainer.visibility = View.VISIBLE
+    }
+
+    /**
+     * Tapping a transit-stop map marker (see StationMarkersController) lands
+     * here instead of a popup — it drives the same results bottom sheet a
+     * route search uses, showing that stop's upcoming departures (mixed
+     * lines, soonest first) so the whole app has one place for "what's
+     * coming and when".
+     */
+    private fun showStopDepartures(stop: TransitStopPlace) {
+        currentStopContext = stop
+        currentStopDepartures = emptyList()
+        stopBackButton.visibility = View.GONE
+        stopDeparturesTitle.text = stop.name
+        stopDeparturesEmpty.visibility = View.GONE
+        stopDeparturesRecycler.adapter = stopLineAdapter
+        showStopPane()
+
+        lifecycleScope.launch {
+            val departures = motisRepository.departuresAtStop(stop.stopId, stop.point)
+            if (currentStopContext?.stopId != stop.stopId) return@launch // user moved to a different stop meanwhile
+            currentStopDepartures = departures
+            stopDeparturesEmpty.visibility = if (departures.isEmpty()) View.VISIBLE else View.GONE
+            // Expand only once the list has actually landed (its diff runs on
+            // a background thread) — expanding first would size the sheet
+            // against zero items, same trap the route-results sheet avoids
+            // (see the routes.collect commit-callback comment in observeViewModel).
+            stopLineAdapter.submitList(departures.groupByLine()) {
+                bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
+                focusFirstChild(stopDeparturesRecycler)
+            }
+        }
+    }
+
+    /** Drills into one line's full remaining schedule for today at the current stop. */
+    private fun showLineScheduleAtStop(routeShortName: String) {
+        val stop = currentStopContext ?: return
+        stopBackButton.visibility = View.VISIBLE
+        stopDeparturesTitle.text = getString(R.string.stop_line_schedule_title, routeShortName, stop.name)
+        stopDeparturesEmpty.visibility = View.GONE
+        stopDeparturesRecycler.adapter = lineScheduleAdapter
+        lineScheduleAdapter.submitList(emptyList())
+
+        lifecycleScope.launch {
+            val all = motisRepository.departuresAtStop(
+                stop.stopId, stop.point,
+                windowSeconds = FULL_SCHEDULE_WINDOW_SECONDS,
+                n = FULL_SCHEDULE_COUNT
+            )
+            if (currentStopContext?.stopId != stop.stopId) return@launch
+            val times = all.filter { it.routeShortName == routeShortName }
+                .map { it.departEpochMillis }
+                .sorted()
+            lineScheduleAdapter.submitList(times)
+            stopDeparturesEmpty.visibility = if (times.isEmpty()) View.VISIBLE else View.GONE
+            focusFirstChild(stopDeparturesRecycler)
+        }
+    }
+
+    /** Back arrow from a drilled-into line schedule, to the stop's full per-line summary list. */
+    private fun returnToStopDepartures() {
+        val stop = currentStopContext ?: return
+        stopBackButton.visibility = View.GONE
+        stopDeparturesTitle.text = stop.name
+        stopDeparturesRecycler.adapter = stopLineAdapter
+        stopLineAdapter.submitList(currentStopDepartures.groupByLine())
+        stopDeparturesEmpty.visibility = if (currentStopDepartures.isEmpty()) View.VISIBLE else View.GONE
+        focusFirstChild(stopDeparturesRecycler)
     }
 
     private fun updateFocusChain() {
         val sheetExpanded = bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED
         val activeRecycler = when {
+            stopDeparturesContainer.visibility == View.VISIBLE -> stopDeparturesRecycler
             detailsContainer.visibility == View.VISIBLE -> detailsRecycler
             resultsRecycler.visibility == View.VISIBLE -> resultsRecycler
             else -> directModesRecycler
@@ -677,6 +983,15 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    /** DPAD_DOWN from the horizontal route quick-switch row (see RouteSwitchAdapter). */
+    private fun focusFirstDetailStepIfAny(): Boolean {
+        if (stepAdapter.itemCount == 0) return false
+        val firstItem = detailsRecycler.findViewHolderForAdapterPosition(0)?.itemView
+            ?: detailsRecycler.layoutManager?.findViewByPosition(0)
+        firstItem?.requestFocus() ?: return false
+        return true
+    }
+
     private fun formatDuration(minutes: Int): String =
         if (minutes >= 60) {
             val hours = minutes / 60.0
@@ -688,6 +1003,7 @@ class MainActivity : AppCompatActivity() {
         }
 
     override fun onDestroy() {
+        stationMarkersController.destroy()
         clearPolyline()
         mapView.destroyAll()
         super.onDestroy()
@@ -697,5 +1013,8 @@ class MainActivity : AppCompatActivity() {
         private const val TAG = "MainActivity"
         private const val MIN_ZOOM = 2
         private const val MAX_ZOOM = 20
+        private const val FULL_SCHEDULE_WINDOW_SECONDS = 24 * 60 * 60
+        private const val FULL_SCHEDULE_COUNT = 200
+        private const val TICK_INTERVAL_MILLIS = 30_000L
     }
 }

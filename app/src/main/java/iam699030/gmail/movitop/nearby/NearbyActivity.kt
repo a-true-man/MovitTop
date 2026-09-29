@@ -27,6 +27,7 @@ import iam699030.gmail.movitop.data.GeoPoint
 import iam699030.gmail.movitop.data.NearbyDeparture
 import iam699030.gmail.movitop.nav.LocationTracker
 import iam699030.gmail.movitop.search.SearchLocationActivity
+import iam699030.gmail.movitop.util.tickEvery
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -90,6 +91,10 @@ class NearbyActivity : AppCompatActivity() {
         refreshButton.requestFocus()
         observeViewModel()
         onCurrentLocationRequested()
+
+        // Re-render the already-fetched list on a timer so "in X min" stays
+        // accurate as time passes, without polling MOTIS again (see RelativeTime).
+        tickEvery(TICK_INTERVAL_MILLIS) { adapter.notifyDataSetChanged() }
     }
 
     private fun onCurrentLocationRequested() {
@@ -132,6 +137,12 @@ class NearbyActivity : AppCompatActivity() {
                             emptyText.visibility = View.VISIBLE
                             emptyText.text = getString(R.string.map_location_unavailable)
                         }
+                        is NearbyViewModel.LoadState.NoOfflineData -> {
+                            progress.visibility = View.GONE
+                            recycler.visibility = View.GONE
+                            emptyText.visibility = View.VISIBLE
+                            emptyText.text = getString(R.string.nearby_no_offline_data)
+                        }
                         is NearbyViewModel.LoadState.Loaded -> {
                             progress.visibility = View.GONE
                             adapter.submitList(state.departures)
@@ -168,5 +179,9 @@ class NearbyActivity : AppCompatActivity() {
             }
         )
         finish()
+    }
+
+    companion object {
+        private const val TICK_INTERVAL_MILLIS = 30_000L
     }
 }

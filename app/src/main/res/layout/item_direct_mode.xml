@@ -32,10 +32,20 @@
             tools:src="@drawable/ic_mode_walk" />
 
         <TextView
-            android:id="@+id/directModeDuration"
+            android:id="@+id/directModeLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
+            android:textColor="@color/movitop_text_secondary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            tools:text="דרייבר" />
+
+        <TextView
+            android:id="@+id/directModeDuration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:textColor="@color/movitop_text_primary"
             android:textSize="15sp"
             android:textStyle="bold"

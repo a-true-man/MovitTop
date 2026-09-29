@@ -1,56 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingHorizontal="16dp"
-    android:paddingVertical="6dp">
-
-    <TextView
-        android:id="@+id/departureTime"
-        android:layout_width="56dp"
-        android:layout_height="wrap_content"
-        android:textColor="@color/movitop_primary"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        tools:text="14:35" />
+    android:background="?android:attr/selectableItemBackground"
+    android:focusable="true"
+    android:focusableInTouchMode="false"
+    android:orientation="vertical">
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="10dp"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="4dp"
+        android:paddingVertical="8dp">
+
+        <TextView
+            android:id="@+id/departureTime"
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:textColor="@color/movitop_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="14:35" />
 
         <TextView
             android:id="@+id/departureHeadsign"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
             android:textColor="@color/movitop_text_primary"
             android:textSize="14sp"
             tools:text="לכיוון ירושלים" />
 
-        <TextView
-            android:id="@+id/departureFromStop"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="@color/movitop_text_secondary"
-            android:textSize="12sp"
-            tools:text="יוצא מ: תחנה מרכזית" />
     </LinearLayout>
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/favoriteStarButton"
-        style="@style/Widget.Material3.Button.IconButton"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        app:icon="@drawable/ic_star"
-        app:iconGravity="textStart"
-        app:iconPadding="0dp"
-        app:iconSize="20dp"
-        app:iconTint="@color/movitop_text_secondary" />
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="70dp"
+        android:background="@color/movitop_divider" />
 
 </LinearLayout>

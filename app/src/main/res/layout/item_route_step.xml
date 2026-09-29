@@ -10,7 +10,6 @@
     android:focusable="true"
     android:focusableInTouchMode="false"
     android:minHeight="48dp"
-    android:paddingHorizontal="16dp"
     android:paddingVertical="8dp">
 
     <View

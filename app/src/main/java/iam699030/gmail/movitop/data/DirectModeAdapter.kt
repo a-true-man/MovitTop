@@ -30,6 +30,7 @@ class DirectModeAdapter(
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val icon: ImageView = view.findViewById(R.id.directModeIcon)
+        val label: TextView = view.findViewById(R.id.directModeLabel)
         val duration: TextView = view.findViewById(R.id.directModeDuration)
         val subtitle: TextView = view.findViewById(R.id.directModeSubtitle)
     }
@@ -45,6 +46,7 @@ class DirectModeAdapter(
 
         holder.icon.setImageResource(option.mode.iconRes)
         holder.icon.contentDescription = context.getString(option.mode.labelRes)
+        holder.label.text = context.getString(option.mode.labelRes)
         holder.duration.text = formatDuration(context, option.durationMinutes)
         val subtitle = option.priceText ?: option.distanceText
         if (subtitle.isNullOrEmpty()) {

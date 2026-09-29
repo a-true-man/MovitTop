@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One compact route card in the detail pane's quick-switch row — lets the
+     user jump straight to a different option's step-by-step view instead of
+     backing out to the results list and searching again. Selected state
+     (stroke/background) is applied in code by RouteSwitchAdapter since it
+     depends on which option is currently open, not on the item's own data. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/routeSwitchCard"
+    android:layout_width="88dp"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="5dp"
+    android:focusable="true"
+    android:focusableInTouchMode="false"
+    app:cardBackgroundColor="@color/movitop_surface"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/movitop_input_stroke"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="10dp">
+
+        <ImageView
+            android:id="@+id/routeSwitchIcon"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:importantForAccessibility="no"
+            tools:src="@drawable/ic_mode_transit" />
+
+        <TextView
+            android:id="@+id/routeSwitchDuration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/movitop_text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            tools:text="45 min" />
+
+        <TextView
+            android:id="@+id/routeSwitchSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/movitop_text_secondary"
+            android:textSize="11sp"
+            tools:text="480" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

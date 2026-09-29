@@ -111,6 +111,16 @@ class MotisForegroundService : Service() {
         fun motisDataDir(context: Context): File =
             File(context.getExternalFilesDir(null), "motis_data")
 
+        /**
+         * Whether a routable graph is actually installed on this device yet.
+         * A fresh install has no graph until one is pushed via ADB or picked
+         * through [iam699030.gmail.movitop.DataImportActivity] — callers use
+         * this to tell "no data installed" apart from a genuine network/engine
+         * failure, which otherwise look identical to the user.
+         */
+        fun hasOfflineData(context: Context): Boolean =
+            File(motisDataDir(context), "data/config.yml").isFile
+
         fun start(context: Context) {
             val intent = Intent(context, MotisForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
