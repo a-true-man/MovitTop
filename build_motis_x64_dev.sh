@@ -55,6 +55,7 @@ docker run --rm \
     git config --global http.postBuffer 524288000
 
     cleanup_broken() {
+      [[ -d deps ]] || return 0
       find deps -maxdepth 1 -mindepth 1 -type d 2>/dev/null | while read -r dir; do
         if [[ -d \"\${dir}/.git\" ]] && ! git -C \"\${dir}\" rev-parse HEAD >/dev/null 2>&1; then
           echo \"[container] removing broken clone \${dir}\"
