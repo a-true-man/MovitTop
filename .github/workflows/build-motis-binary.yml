@@ -31,6 +31,7 @@ jobs:
     timeout-minutes: 120
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - arch: arm64
@@ -99,7 +100,6 @@ jobs:
           test -f ${{ matrix.build_dir }}/motis
           cp ${{ matrix.build_dir }}/motis motis-server
           chmod +x motis-server
-          file motis-server
           ls -lh motis-server
 
       - name: Upload motis-server artifact
