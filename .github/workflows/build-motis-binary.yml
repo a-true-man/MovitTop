@@ -1,19 +1,46 @@
-# Cross-compile a Linux ARM64 MOTIS binary for on-device Android execution.
-# Trigger manually from the GitHub Actions tab (workflow_dispatch).
+# Cross-compile Linux ARM64 + AMD64 MOTIS binaries from the SAME upstream
+# motis-project/motis commit. Trigger manually from the GitHub Actions tab
+# (workflow_dispatch).
+#
+# Both binaries MUST come from one pinned commit: the ARM64 one runs on real
+# devices (app/src/main/jniLibs/arm64-v8a/libmotis.so) while the AMD64 one
+# runs `motis import` in compile_motis_graph.sh to (re)compile the routing
+# graph. If they drift to different motis commits, the graph's on-disk
+# format (nigiri_bin_ver) can silently become unreadable by the ARM64
+# server — it exits immediately with "no existing version found
+# [key=nigiri_bin_ver], please re-run import" and routing/map never comes
+# up, even though everything else (e.g. the line list, served straight from
+# line_schedules.sqlite) keeps working. Always rebuild both jobs together
+# when bumping MOTIS_REF.
 #
 # Runtime modules (routing, osr, geocoding) are selected via config.yml on the
 # device — the executable is the full MOTIS server built with the upstream
-# linux-arm64-release preset (musl, statically linked).
+# linux-arm64-release / linux-amd64-release presets (musl, statically linked).
 
-name: Build MOTIS ARM64 Binary
+name: Build MOTIS Binaries
 
 on:
   workflow_dispatch:
+
+env:
+  MOTIS_REF: c9bc040e8d55540911775f4a3b2adb60f945c8bf
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            preset: linux-arm64-release
+            build_dir: build/arm64-release
+            artifact: motis-server-arm64
+          - arch: amd64
+            preset: linux-amd64-release
+            build_dir: build/amd64-release
+            artifact: motis-server-amd64
 
     defaults:
       run:
@@ -27,7 +54,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: motis-project/motis
-          ref: c9bc040e8d55540911775f4a3b2adb60f945c8bf
+          ref: ${{ env.MOTIS_REF }}
           path: motis
 
       - name: Fetch dependencies (pkg)
@@ -57,18 +84,18 @@ jobs:
           echo "ERROR: pkg dependency fetch failed after 5 attempts" >&2
           exit 1
 
-      - name: Configure (linux-arm64-release)
+      - name: Configure (${{ matrix.preset }})
         working-directory: motis
-        run: cmake --preset linux-arm64-release
+        run: cmake --preset ${{ matrix.preset }}
 
       # Compile only — no strip/size-reduction (musl strip is unavailable in CI).
       - name: Build motis executable
         working-directory: motis
         run: |
           JOBS="$(nproc 2>/dev/null || echo 4)"
-          cmake --build --preset linux-arm64-release --target motis -j "${JOBS}"
-          test -f build/arm64-release/motis
-          cp build/arm64-release/motis motis-server
+          cmake --build --preset ${{ matrix.preset }} --target motis -j "${JOBS}"
+          test -f ${{ matrix.build_dir }}/motis
+          cp ${{ matrix.build_dir }}/motis motis-server
           chmod +x motis-server
           file motis-server
           ls -lh motis-server
@@ -76,6 +103,6 @@ jobs:
       - name: Upload motis-server artifact
         uses: actions/upload-artifact@v4
         with:
-          name: motis-server-arm64
+          name: ${{ matrix.artifact }}
           path: motis/motis-server
           retention-days: 30
