@@ -43,7 +43,12 @@ if ! ls "${DATA_DIR}"/israel-and-palestine-latest.osm.pbf >/dev/null 2>&1; then
 fi
 
 log "Importing (this reads the OSM pbf + GTFS zip and writes data/) ..."
+# --user: without this, root (the container's default user) owns every file
+# `motis import` writes into the bind-mounted DATA_DIR, leaving the host
+# unable to touch data/ afterwards (e.g. build_line_schedules.py writing
+# line_schedules.sqlite next to it) without sudo.
 docker run --rm \
+  --user "$(id -u):$(id -g)" \
   -v "${DATA_DIR}:/data" \
   -v "${BINARY}:/motis:ro" \
   -w /data \
