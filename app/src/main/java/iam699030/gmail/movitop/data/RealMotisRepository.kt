@@ -16,6 +16,7 @@ import iam699030.gmail.movitop.data.api.StopTimeDto
 import iam699030.gmail.movitop.nav.NavigationStep
 import iam699030.gmail.movitop.nav.haversineMeters
 import iam699030.gmail.movitop.nav.pointAtFraction
+import kotlinx.coroutines.CancellationException
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -68,6 +69,24 @@ class RealMotisRepository(
     private val api: MotisApi = retrofit.create(MotisApi::class.java)
     private val geocoder = PlaceGeocoder(api)
 
+    // Broad/short geocode prefixes (e.g. 2 typed characters) can take MOTIS's
+    // geocoder tens of seconds to rank on this device — fine for a deliberate
+    // "plan route" submit, but autocomplete-while-typing already treats any
+    // failure as "no suggestions this keystroke" and falls back to local
+    // matches (see geocodePlaces below), so it should fail fast instead of
+    // blocking on the shared 30s read timeout meant for real route requests.
+    private val autocompleteApi: MotisApi = Retrofit.Builder()
+        .baseUrl(baseUrl)
+        .client(
+            OkHttpClient.Builder()
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(6, TimeUnit.SECONDS)
+                .build()
+        )
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(MotisApi::class.java)
+
     // Several TRANSIT options can share the same [TransportMode] (e.g. two
     // different lines a minute apart), so getRouteDetail can't re-derive which
     // one was picked from mode alone — this remembers the exact itinerary each
@@ -82,7 +101,11 @@ class RealMotisRepository(
             GeocodePlace(name = name, subtitle = context.getString(R.string.country_israel), lat = 0.0, lon = 0.0)
         }
         val remote = try {
-            api.geocode(trimmed).mapNotNull { it.toGeocodePlace(context) }
+            autocompleteApi.geocode(trimmed).mapNotNull { it.toGeocodePlace(context) }
+        } catch (e: CancellationException) {
+            // A newer keystroke superseded this search — not a real failure,
+            // and swallowing it here would break structured concurrency.
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "geocode(\"$trimmed\") failed — is the MOTIS engine running?", e)
             emptyList()
