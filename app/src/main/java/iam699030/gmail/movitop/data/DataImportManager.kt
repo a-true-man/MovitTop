@@ -54,11 +54,23 @@ class DataImportManager(private val context: Context) {
                     var entry = zip.nextEntry
                     while (entry != null) {
                         if (!entry.isDirectory) {
+                            // Preserve the entry's subdirectory structure (e.g. adr/t.bin,
+                            // osr/rtree_data.bin) — newer compiled graphs organize files into
+                            // per-module subfolders, and flattening to just the basename
+                            // silently collides same-named files from different subfolders
+                            // (adr/rtree_data.bin vs osr/rtree_data.bin) and puts files where
+                            // the MOTIS binary can't find them.
                             val target = when {
                                 entry.name == "israel.map" -> extractedMapFile
                                 entry.name.startsWith("tzdata/") ->
                                     File(stagingTzdata, entry.name.removePrefix("tzdata/"))
-                                else -> File(stagingGraph, entry.name.substringAfterLast('/'))
+                                else -> File(stagingGraph, entry.name)
+                            }
+                            val targetDir = if (entry.name.startsWith("tzdata/")) stagingTzdata else stagingGraph
+                            if (target != extractedMapFile &&
+                                !target.canonicalPath.startsWith(targetDir.canonicalPath + File.separator)
+                            ) {
+                                throw IOException("Zip entry escapes target directory: ${entry.name}")
                             }
                             target.parentFile?.mkdirs()
                             target.outputStream().use { out -> zip.copyTo(out) }
@@ -81,11 +93,19 @@ class DataImportManager(private val context: Context) {
             val liveGraph = File(motisRoot, "data")
             val liveTzdata = File(motisRoot, "tzdata")
             val liveMap = File(motisRoot, "israel.map")
-            liveGraph.deleteRecursively()
-            stagingGraph.renameTo(liveGraph)
+            if (liveGraph.exists() && !liveGraph.deleteRecursively()) {
+                throw IOException("Could not remove the previous graph at ${liveGraph.absolutePath}")
+            }
+            if (!stagingGraph.renameTo(liveGraph)) {
+                throw IOException("Could not move the new graph into place at ${liveGraph.absolutePath}")
+            }
             if (stagingTzdata.isDirectory) {
-                liveTzdata.deleteRecursively()
-                stagingTzdata.renameTo(liveTzdata)
+                if (liveTzdata.exists() && !liveTzdata.deleteRecursively()) {
+                    throw IOException("Could not remove the previous tzdata at ${liveTzdata.absolutePath}")
+                }
+                if (!stagingTzdata.renameTo(liveTzdata)) {
+                    throw IOException("Could not move the new tzdata into place at ${liveTzdata.absolutePath}")
+                }
             }
             if (extractedMapFile.isFile) {
                 liveMap.delete()
