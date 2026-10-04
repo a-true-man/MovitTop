@@ -32,6 +32,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import iam699030.gmail.movitop.MainViewModel.RoutingState
@@ -42,6 +43,8 @@ import iam699030.gmail.movitop.data.GeoPoint
 import iam699030.gmail.movitop.data.MapLeg
 import iam699030.gmail.movitop.data.MotisRepository
 import iam699030.gmail.movitop.data.NearbyDeparture
+import iam699030.gmail.movitop.data.Poi
+import iam699030.gmail.movitop.data.PoiRepository
 import iam699030.gmail.movitop.data.RavKavStationsRepository
 import iam699030.gmail.movitop.data.RealMotisRepository
 import iam699030.gmail.movitop.data.RouteAdapter
@@ -49,6 +52,9 @@ import iam699030.gmail.movitop.data.RouteOption
 import iam699030.gmail.movitop.data.RouteSwitchAdapter
 import iam699030.gmail.movitop.data.LineScheduleAdapter
 import iam699030.gmail.movitop.data.StopLineAdapter
+import iam699030.gmail.movitop.data.TripHistoryAdapter
+import iam699030.gmail.movitop.data.TripHistoryEntry
+import iam699030.gmail.movitop.data.TripHistoryRepository
 import iam699030.gmail.movitop.data.groupByLine
 import iam699030.gmail.movitop.data.TaxiStations
 import iam699030.gmail.movitop.data.TransitStopPlace
@@ -58,16 +64,23 @@ import iam699030.gmail.movitop.data.TripTime
 import iam699030.gmail.movitop.map.MapThemeHelper
 import iam699030.gmail.movitop.map.StationMarkersController
 import iam699030.gmail.movitop.nav.LocationTracker
+import iam699030.gmail.movitop.nav.haversineMeters
+import iam699030.gmail.movitop.nearby.NearbyFilter
+import iam699030.gmail.movitop.nearby.NearbyListAdapter
+import iam699030.gmail.movitop.nearby.NearbyListItem
+import iam699030.gmail.movitop.nearby.NearbySort
+import iam699030.gmail.movitop.util.isOpenNow
 import iam699030.gmail.movitop.util.tickEvery
 import iam699030.gmail.movitop.nav.PendingNavigation
-import iam699030.gmail.movitop.nearby.NearbyActivity
 import iam699030.gmail.movitop.search.SearchLocationActivity
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import kotlin.math.cos
 import org.mapsforge.core.graphics.Style
 import org.mapsforge.core.model.LatLong
 import org.mapsforge.map.android.graphics.AndroidGraphicFactory
@@ -97,6 +110,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var detailsRecycler: RecyclerView
     private lateinit var routeSwitchTitle: TextView
     private lateinit var routeSwitchRecycler: RecyclerView
+    private lateinit var homeContainer: LinearLayout
+    private lateinit var homePeekRow: LinearLayout
+    private lateinit var homeExpandedContent: LinearLayout
     private lateinit var summaryContainer: LinearLayout
     private lateinit var detailsContainer: LinearLayout
     private lateinit var detailsDuration: TextView
@@ -107,12 +123,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var stopDeparturesRecycler: RecyclerView
     private lateinit var stopDeparturesEmpty: TextView
     private lateinit var settingsButton: MaterialButton
-    private lateinit var nearbyButton: MaterialButton
     private lateinit var lineTimesButton: MaterialButton
     private lateinit var zoomInButton: MaterialButton
     private lateinit var zoomOutButton: MaterialButton
     private lateinit var myLocationButton: MaterialButton
     private lateinit var dataImportButton: MaterialButton
+    private lateinit var tripHistoryTitle: TextView
+    private lateinit var tripHistoryRecycler: RecyclerView
+    private lateinit var nearbyCategoryChips: ChipGroup
+    private lateinit var nearbySortToggle: TextView
+    private lateinit var nearbyProgress: ProgressBar
+    private lateinit var nearbyListEmpty: TextView
+    private lateinit var nearbyListRecycler: RecyclerView
 
     private val requestLocationPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -125,6 +147,7 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { }
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<NestedScrollView>
+    private lateinit var resultsSheetView: View
 
     private val routeAdapter = RouteAdapter { option -> viewModel.selectRoute(option) }
     private val directModeAdapter = DirectModeAdapter(
@@ -146,7 +169,29 @@ class MainActivity : AppCompatActivity() {
 
     private val motisRepository: MotisRepository by lazy { RealMotisRepository(this) }
     private val ravKavRepository: RavKavStationsRepository by lazy { RavKavStationsRepository(this) }
+    private val poiRepository: PoiRepository by lazy { PoiRepository(this) }
+    private val tripHistoryRepository: TripHistoryRepository by lazy { TripHistoryRepository(this) }
     private lateinit var stationMarkersController: StationMarkersController
+
+    private val tripHistoryAdapter: TripHistoryAdapter = TripHistoryAdapter(
+        onTripSelected = { entry -> selectTripHistoryEntry(entry) },
+        onPinToggled = { entry ->
+            tripHistoryRepository.togglePin(entry)
+            tripHistoryAdapter.submitList(tripHistoryRepository.getAll())
+        },
+        onDownPressed = { focusNearbyChipsOrListIfAny() }
+    )
+    private val nearbyListAdapter = NearbyListAdapter(
+        onDepartureSelected = { item ->
+            viewModel.setOrigin(item.departure.stopName, item.departure.stopPoint)
+        },
+        onPlaceSelected = { item -> handleNearbyPlaceSelected(item) }
+    )
+
+    private var allNearbyItems: List<NearbyListItem> = emptyList()
+    private var currentNearbyFilter: NearbyFilter = NearbyFilter.ALL
+    private var currentNearbySort: NearbySort = NearbySort.DISTANCE
+    private var nearbyLoadJob: Job? = null
 
     // Top-level pane: one card per line (see GroupedLineDeparture). Drilled-in
     // pane: that one line's full schedule at this stop, times only (see
@@ -191,22 +236,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // NearbyActivity returns a stop the exact same way SearchLocationActivity
-    // returns a place — picking a nearby departure means "I'll board here",
-    // so it always lands in the origin field.
-    private val nearbyLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode != RESULT_OK) return@registerForActivityResult
-        val data = result.data ?: return@registerForActivityResult
-        val name = data.getStringExtra(SearchLocationActivity.EXTRA_PLACE_NAME).orEmpty()
-        if (name.isEmpty()) return@registerForActivityResult
-        val lat = data.getDoubleExtra(SearchLocationActivity.EXTRA_PLACE_LAT, 0.0)
-        val lon = data.getDoubleExtra(SearchLocationActivity.EXTRA_PLACE_LON, 0.0)
-        viewModel.setOrigin(name, GeoPoint(lat, lon))
-        originText.text = name
-    }
-
     private var pendingSearchField: String = SearchLocationActivity.FIELD_ORIGIN
     private var noOfflineDataSnackbar: Snackbar? = null
 
@@ -238,6 +267,9 @@ class MainActivity : AppCompatActivity() {
         detailsRecycler = findViewById(R.id.detailsRecycler)
         routeSwitchTitle = findViewById(R.id.routeSwitchTitle)
         routeSwitchRecycler = findViewById(R.id.routeSwitchRecycler)
+        homeContainer = findViewById(R.id.homeContainer)
+        homePeekRow = findViewById(R.id.homePeekRow)
+        homeExpandedContent = findViewById(R.id.homeExpandedContent)
         summaryContainer = findViewById(R.id.summaryContainer)
         detailsContainer = findViewById(R.id.detailsContainer)
         detailsDuration = findViewById(R.id.detailsDuration)
@@ -251,8 +283,6 @@ class MainActivity : AppCompatActivity() {
         stopDeparturesEmpty = findViewById(R.id.stopDeparturesEmpty)
         settingsButton = findViewById(R.id.settingsButton)
         settingsButton.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
-        nearbyButton = findViewById(R.id.nearbyButton)
-        nearbyButton.setOnClickListener { nearbyLauncher.launch(Intent(this, NearbyActivity::class.java)) }
         lineTimesButton = findViewById(R.id.lineTimesButton)
         lineTimesButton.setOnClickListener { startActivity(Intent(this, LineTimesActivity::class.java)) }
         zoomInButton = findViewById(R.id.zoomInButton)
@@ -265,10 +295,18 @@ class MainActivity : AppCompatActivity() {
         dataImportButton.setOnClickListener {
             startActivity(Intent(this, DataImportActivity::class.java))
         }
+        tripHistoryTitle = findViewById(R.id.tripHistoryTitle)
+        tripHistoryRecycler = findViewById(R.id.tripHistoryRecycler)
+        nearbyCategoryChips = findViewById(R.id.nearbyCategoryChips)
+        nearbySortToggle = findViewById(R.id.nearbySortToggle)
+        nearbyProgress = findViewById(R.id.nearbyProgress)
+        nearbyListEmpty = findViewById(R.id.nearbyListEmpty)
+        nearbyListRecycler = findViewById(R.id.nearbyListRecycler)
 
         setupMap()
         setupResultsSheet()
         setupSearchForm()
+        setupHomePane()
         observeViewModel()
 
         requestNotificationPermissionIfNeeded()
@@ -316,9 +354,21 @@ class MainActivity : AppCompatActivity() {
         if (noOfflineDataSnackbar?.isShown == true) return
         noOfflineDataSnackbar = Snackbar.make(
             findViewById(R.id.main), R.string.no_offline_data_banner, Snackbar.LENGTH_INDEFINITE
-        ).setAction(R.string.no_offline_data_action) {
-            startActivity(Intent(this, DataImportActivity::class.java))
-        }.also { it.show() }
+        ).setAnchorView(resultsSheetView)
+            .setAction(R.string.no_offline_data_action) {
+                startActivity(Intent(this, DataImportActivity::class.java))
+            }.also { it.show() }
+    }
+
+    /**
+     * The results sheet is now always on screen (collapsed to its peek bar at
+     * minimum, see setupResultsSheet) instead of fully hidden like before —
+     * an un-anchored Snackbar would render underneath/behind it. Anchoring
+     * floats it just above the sheet's current top edge instead.
+     */
+    private fun showSnackbar(@androidx.annotation.StringRes messageRes: Int, duration: Int, vararg args: Any) {
+        val message = if (args.isEmpty()) getString(messageRes) else getString(messageRes, *args)
+        Snackbar.make(findViewById(R.id.main), message, duration).setAnchorView(resultsSheetView).show()
     }
 
     private fun setupMap() {
@@ -373,17 +423,28 @@ class MainActivity : AppCompatActivity() {
         mapView.model.mapViewPosition.center = LatLong(31.9, 35.0)
         mapView.model.mapViewPosition.zoomLevel = 8.toByte()
 
-        // Transit-stop + Rav-Kav charging-station markers (see StationMarkersController):
-        // only appear once zoomed in, recomputed for the viewport on every pan/zoom.
+        // Transit-stop + Rav-Kav charging-station + POI markers (see
+        // StationMarkersController): only appear once zoomed in, recomputed
+        // for the viewport on every pan/zoom.
         stationMarkersController = StationMarkersController(
             context = this,
             mapView = mapView,
             scope = lifecycleScope,
             motisRepository = motisRepository,
             ravKavRepository = ravKavRepository,
-            onStopSelected = { stop -> showStopDepartures(stop) }
+            poiRepository = poiRepository,
+            onStopSelected = { stop -> showStopDepartures(stop) },
+            onPoiDestinationPicked = { poi -> pickPoiAsDestination(poi) }
         )
         stationMarkersController.start()
+    }
+
+    /** A POI tapped on the map (see StationMarkersController) is handed off as a destination pick. */
+    private fun pickPoiAsDestination(poi: Poi) {
+        viewModel.setDestination(poi.name, poi.point)
+        destinationText.text = poi.name
+        showHomePane()
+        bottomSheetBehavior.state = BottomSheetBehavior.STATE_HALF_EXPANDED
     }
 
     private fun zoomBy(delta: Int) {
@@ -422,13 +483,166 @@ class MainActivity : AppCompatActivity() {
                 LocationTracker(this@MainActivity).updates().firstOrNull()
             }
             if (point == null) {
-                Snackbar.make(findViewById(R.id.main), R.string.map_location_unavailable, Snackbar.LENGTH_LONG)
-                    .show()
+                showSnackbar(R.string.map_location_unavailable, Snackbar.LENGTH_LONG)
                 return@launch
             }
+            refreshNearbyList(point)
             mapView.model.mapViewPosition.center = LatLong(point.lat, point.lon)
             mapView.model.mapViewPosition.zoomLevel = 15.toByte()
         }
+    }
+
+    private fun setupHomePane() {
+        tripHistoryRecycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        tripHistoryRecycler.adapter = tripHistoryAdapter
+        nearbyListRecycler.layoutManager = LinearLayoutManager(this)
+        nearbyListRecycler.adapter = nearbyListAdapter
+
+        homePeekRow.setOnClickListener { expandHomeSearch() }
+        homePeekRow.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_UP &&
+                (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)
+            ) {
+                expandHomeSearch(); true
+            } else {
+                false
+            }
+        }
+
+        nearbyCategoryChips.setOnCheckedStateChangeListener { _, checkedIds ->
+            val checkedId = checkedIds.firstOrNull() ?: return@setOnCheckedStateChangeListener
+            currentNearbyFilter = when (checkedId) {
+                R.id.chipNearbyTransit -> NearbyFilter.TRANSIT
+                R.id.chipNearbyCharging -> NearbyFilter.CHARGING
+                R.id.chipNearbyFood -> NearbyFilter.FOOD_DRINK
+                R.id.chipNearbyShopping -> NearbyFilter.SHOPPING
+                R.id.chipNearbyHealth -> NearbyFilter.HEALTH
+                R.id.chipNearbyFinance -> NearbyFilter.FINANCE
+                R.id.chipNearbyLeisure -> NearbyFilter.LEISURE
+                else -> NearbyFilter.ALL
+            }
+            applyNearbyFilterAndSort()
+        }
+
+        nearbySortToggle.setOnClickListener {
+            currentNearbySort = if (currentNearbySort == NearbySort.DISTANCE) NearbySort.OPEN_NOW else NearbySort.DISTANCE
+            updateNearbySortLabel()
+            applyNearbyFilterAndSort()
+        }
+
+        tripHistoryAdapter.submitList(tripHistoryRepository.getAll())
+        updateTripHistoryVisibility()
+
+        // Loads once on launch — reuses whichever GPS fix requestMyLocation()'s
+        // permission flow produces, same as tapping the map's location button.
+        requestMyLocation()
+    }
+
+    /** Expands the sheet to reveal the search form — the touch-drag equivalent
+     * for a tap/Enter on the collapsed peek bar (see homePeekRow's key listener). */
+    private fun expandHomeSearch() {
+        bottomSheetBehavior.state = BottomSheetBehavior.STATE_HALF_EXPANDED
+        originRow.requestFocus()
+    }
+
+    private fun selectTripHistoryEntry(entry: TripHistoryEntry) {
+        viewModel.setOrigin(entry.originName, entry.originCoord)
+        viewModel.setDestination(entry.destinationName, entry.destinationCoord)
+        originText.text = entry.originName
+        destinationText.text = entry.destinationName
+        viewModel.search()
+    }
+
+    private fun updateTripHistoryVisibility() {
+        val hasHistory = tripHistoryAdapter.itemCount > 0
+        tripHistoryTitle.visibility = if (hasHistory) View.VISIBLE else View.GONE
+        tripHistoryRecycler.visibility = if (hasHistory) View.VISIBLE else View.GONE
+    }
+
+    private fun updateNearbySortLabel() {
+        nearbySortToggle.text = getString(
+            if (currentNearbySort == NearbySort.DISTANCE) R.string.nearby_sort_distance else R.string.nearby_sort_open_now
+        )
+    }
+
+    private fun handleNearbyPlaceSelected(item: NearbyListItem) {
+        when (item) {
+            is NearbyListItem.RavKav -> {
+                viewModel.setOrigin(item.station.name, item.station.point)
+                originText.text = item.station.name
+            }
+            is NearbyListItem.Place -> pickPoiAsDestination(item.poi)
+            else -> Unit
+        }
+    }
+
+    /** DPAD_DOWN from the trip-history carousel: the checked category chip, or the nearby list if there's none. */
+    private fun focusNearbyChipsOrListIfAny(): Boolean {
+        val checkedChip = nearbyCategoryChips.checkedChipId.takeIf { it != View.NO_ID }
+            ?.let { findViewById<View>(it) }
+        if (checkedChip != null) {
+            checkedChip.requestFocus()
+            return true
+        }
+        return focusFirstNearbyItemIfAny()
+    }
+
+    private fun focusFirstNearbyItemIfAny(): Boolean {
+        if (nearbyListAdapter.itemCount == 0) return false
+        val firstItem = nearbyListRecycler.findViewHolderForAdapterPosition(0)?.itemView
+            ?: nearbyListRecycler.layoutManager?.findViewByPosition(0)
+        firstItem?.requestFocus() ?: return false
+        return true
+    }
+
+    /**
+     * Rebuilds the Home pane's nearby list from [origin]: live transit
+     * departures (needs the offline routing graph — skipped, not
+     * errored, when it's not imported yet) plus bundled Rav-Kav stations
+     * and POIs (assets, always available) within [NEARBY_RADIUS_METERS].
+     */
+    private fun refreshNearbyList(origin: GeoPoint) {
+        nearbyLoadJob?.cancel()
+        nearbyProgress.visibility = View.VISIBLE
+        nearbyListEmpty.visibility = View.GONE
+        nearbyLoadJob = lifecycleScope.launch {
+            val (southWest, northEast) = boundingBox(origin, NEARBY_RADIUS_METERS)
+            val departures = if (MotisForegroundService.hasOfflineData(this@MainActivity)) {
+                motisRepository.nearbyDepartures(origin).map { NearbyListItem.Departure(it) }
+            } else {
+                emptyList()
+            }
+            val ravKav = ravKavRepository.stationsInBounds(southWest, northEast).map { station ->
+                NearbyListItem.RavKav(station, haversineMeters(origin, station.point), isOpenNow(station.hoursByDay))
+            }
+            val pois = poiRepository.poisInBounds(southWest, northEast).map { poi ->
+                NearbyListItem.Place(poi, haversineMeters(origin, poi.point), isOpenNow(poi.hoursByDay))
+            }
+            allNearbyItems = departures + ravKav + pois
+            nearbyProgress.visibility = View.GONE
+            applyNearbyFilterAndSort()
+        }
+    }
+
+    private fun applyNearbyFilterAndSort() {
+        updateNearbySortLabel()
+        val filtered = allNearbyItems.filter { currentNearbyFilter.matches(it) }
+        val sorted = when (currentNearbySort) {
+            NearbySort.DISTANCE -> filtered.sortedBy { it.distanceMeters }
+            NearbySort.OPEN_NOW -> filtered.sortedWith(
+                compareByDescending<NearbyListItem> { it.isOpenNow == true }.thenBy { it.distanceMeters }
+            )
+        }
+        nearbyListAdapter.submitList(sorted)
+        nearbyListEmpty.visibility = if (sorted.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    /** A rough equirectangular bounding box [radiusMeters] around [center] — good enough at the "nearby" scale this is used at. */
+    private fun boundingBox(center: GeoPoint, radiusMeters: Double): Pair<GeoPoint, GeoPoint> {
+        val latDelta = radiusMeters / METERS_PER_DEGREE_LAT
+        val lonDelta = radiusMeters / (METERS_PER_DEGREE_LAT * cos(Math.toRadians(center.lat)).coerceAtLeast(0.01))
+        return GeoPoint(center.lat - latDelta, center.lon - lonDelta) to
+            GeoPoint(center.lat + latDelta, center.lon + lonDelta)
     }
 
     /** Draws each leg as its own colored segment (see [LegColors]) — a line change or a walk is then visible at a glance. */
@@ -465,6 +679,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupResultsSheet() {
         val sheet = findViewById<NestedScrollView>(R.id.resultsBottomSheet)
+        resultsSheetView = sheet
         resultsRecycler.layoutManager = LinearLayoutManager(this)
         resultsRecycler.adapter = routeAdapter
         directModesRecycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -476,11 +691,34 @@ class MainActivity : AppCompatActivity() {
         stopDeparturesRecycler.layoutManager = LinearLayoutManager(this)
         stopDeparturesRecycler.adapter = stopLineAdapter
 
+        // Never fully hidden any more — the Home pane's collapsed peek bar is
+        // always the resting state, so the map is dominant but search stays
+        // one drag/tap away (see the layout file's top comment). peekHeight
+        // and halfExpandedRatio are recomputed from the sheet's own measured
+        // height once it's actually laid out, instead of trusting the XML's
+        // preview-only dp guesses — that's what makes this "fully"
+        // responsive rather than tuned for one screen size.
         bottomSheetBehavior = BottomSheetBehavior.from(sheet).apply {
-            isHideable = true
-            peekHeight = 0
-            state = BottomSheetBehavior.STATE_HIDDEN
+            isHideable = false
+            setFitToContents(false)
+            state = BottomSheetBehavior.STATE_COLLAPSED
         }
+        sheet.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                val parentHeight = (sheet.parent as? View)?.height ?: return
+                if (parentHeight <= 0) return
+                sheet.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                val peekPx = homePeekRow.height.takeIf { it > 0 }
+                    ?.plus((2 * resources.displayMetrics.density * 14).toInt()) // ~top/bottom breathing room
+                    ?: (HOME_PEEK_FRACTION * parentHeight).toInt()
+                bottomSheetBehavior.peekHeight = peekPx.coerceIn(
+                    (MIN_PEEK_DP * resources.displayMetrics.density).toInt(),
+                    (parentHeight * MAX_PEEK_FRACTION).toInt()
+                )
+                bottomSheetBehavior.halfExpandedRatio = HOME_HALF_EXPANDED_FRACTION.coerceIn(0.3f, 0.7f)
+            }
+        })
+
         bottomSheetBehavior.addBottomSheetCallback(object :
             BottomSheetBehavior.BottomSheetCallback() {
             override fun onStateChanged(bottomSheet: View, newState: Int) {
@@ -489,11 +727,18 @@ class MainActivity : AppCompatActivity() {
                         val target = when {
                             stopDeparturesContainer.visibility == View.VISIBLE -> stopDeparturesRecycler
                             detailsContainer.visibility == View.VISIBLE -> detailsRecycler
+                            homeContainer.visibility == View.VISIBLE -> nearbyListRecycler
                             else -> resultsRecycler
                         }
                         focusFirstChild(target)
                     }
-                    BottomSheetBehavior.STATE_HIDDEN -> updateFocusChain()
+                    BottomSheetBehavior.STATE_HALF_EXPANDED -> {
+                        if (homeContainer.visibility == View.VISIBLE) originRow.requestFocus()
+                    }
+                    BottomSheetBehavior.STATE_COLLAPSED -> {
+                        if (homeContainer.visibility == View.VISIBLE) homePeekRow.requestFocus()
+                        updateFocusChain()
+                    }
                 }
             }
 
@@ -506,8 +751,12 @@ class MainActivity : AppCompatActivity() {
                     viewModel.uiState.value.routingState is RoutingState.ViewingRouteDetails ->
                         viewModel.backToSummary()
                     stopBackButton.visibility == View.VISIBLE -> returnToStopDepartures()
-                    bottomSheetBehavior.state != BottomSheetBehavior.STATE_HIDDEN ->
-                        bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+                    homeContainer.visibility != View.VISIBLE -> {
+                        showHomePane()
+                        bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+                    }
+                    bottomSheetBehavior.state != BottomSheetBehavior.STATE_COLLAPSED ->
+                        bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
                     else -> {
                         isEnabled = false
                         onBackPressedDispatcher.onBackPressed()
@@ -544,7 +793,14 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        originRow.requestFocus()
+        // A plain requestFocus() here loses to Android's own default-focus pass
+        // (it runs once the window actually attaches, which is after onCreate
+        // returns, and docks focus on mapView — the first focusable view in
+        // traversal order — since mapView.isFocusableInTouchMode = true lets
+        // it hold focus even before any touch). Posting re-asserts it after
+        // that pass so a D-Pad/keyboard user actually lands on the sheet's
+        // peek bar, not a map with no visible way back to search.
+        homePeekRow.post { homePeekRow.requestFocus() }
     }
 
     private fun handleRowKey(view: View, keyCode: Int, event: KeyEvent, onSelect: () -> Unit): Boolean {
@@ -572,7 +828,7 @@ class MainActivity : AppCompatActivity() {
     private fun startLiveNavigation() {
         val steps = viewModel.routeDetail.value?.navigationSteps
         if (steps.isNullOrEmpty()) {
-            Snackbar.make(findViewById(R.id.main), R.string.nav_unavailable, Snackbar.LENGTH_SHORT).show()
+            showSnackbar(R.string.nav_unavailable, Snackbar.LENGTH_SHORT)
             return
         }
         PendingNavigation.steps = steps
@@ -770,6 +1026,7 @@ class MainActivity : AppCompatActivity() {
                         renderRoutingState(state.routingState)
                         state.errorMessage?.let { message ->
                             Snackbar.make(findViewById(R.id.main), message, Snackbar.LENGTH_LONG)
+                                .setAnchorView(resultsSheetView)
                                 .show()
                             viewModel.clearError()
                         }
@@ -800,6 +1057,7 @@ class MainActivity : AppCompatActivity() {
                         directModeAdapter.submitList(direct) {
                             routeAdapter.submitList(transit) {
                                 if (routes != null) {
+                                    recordTripHistory()
                                     bottomSheetBehavior.state = BottomSheetBehavior.STATE_EXPANDED
                                     focusFirstChild(if (transit.isNotEmpty()) resultsRecycler else directModesRecycler)
                                     updateFocusChain()
@@ -844,31 +1102,56 @@ class MainActivity : AppCompatActivity() {
                 // Every uiState emission re-renders here, including ones
                 // unrelated to routing (e.g. a keystroke in the search
                 // fields) — don't let an unchanged Idle state clobber a
-                // stop-departures sheet the user has open from a map tap.
-                if (state !is RoutingState.Calculating && stopDeparturesContainer.visibility != View.VISIBLE) {
-                    bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
+                // stop-departures sheet the user has open from a map tap, and
+                // don't yank the sheet back to collapsed just because the
+                // user is still idly filling in the Home pane's own form.
+                if (stopDeparturesContainer.visibility != View.VISIBLE) {
+                    val leavingResultsOrDetails = homeContainer.visibility != View.VISIBLE
+                    showHomePane()
+                    if (state !is RoutingState.Calculating && leavingResultsOrDetails) {
+                        bottomSheetBehavior.state = BottomSheetBehavior.STATE_HALF_EXPANDED
+                    }
                 }
                 updateFocusChain()
             }
         }
     }
 
+    private fun showHomePane() {
+        homeContainer.visibility = View.VISIBLE
+        summaryContainer.visibility = View.GONE
+        detailsContainer.visibility = View.GONE
+        stopDeparturesContainer.visibility = View.GONE
+    }
+
     private fun showSummaryPane() {
+        homeContainer.visibility = View.GONE
         summaryContainer.visibility = View.VISIBLE
         detailsContainer.visibility = View.GONE
         stopDeparturesContainer.visibility = View.GONE
     }
 
     private fun showDetailsPane() {
+        homeContainer.visibility = View.GONE
         summaryContainer.visibility = View.GONE
         detailsContainer.visibility = View.VISIBLE
         stopDeparturesContainer.visibility = View.GONE
     }
 
     private fun showStopPane() {
+        homeContainer.visibility = View.GONE
         summaryContainer.visibility = View.GONE
         detailsContainer.visibility = View.GONE
         stopDeparturesContainer.visibility = View.VISIBLE
+    }
+
+    private fun recordTripHistory() {
+        val state = viewModel.uiState.value
+        tripHistoryRepository.record(
+            state.originQuery, state.originCoord, state.destinationQuery, state.destinationCoord
+        )
+        tripHistoryAdapter.submitList(tripHistoryRepository.getAll())
+        updateTripHistoryVisibility()
     }
 
     /**
@@ -940,6 +1223,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateFocusChain() {
+        if (homeContainer.visibility == View.VISIBLE) {
+            // The origin/destination/time/search chain, trip-history row, and
+            // category chips are all wired via static nextFocus ids in the
+            // layout — Android's default focus search takes over for any
+            // link that's currently GONE (e.g. no trip history yet), so
+            // there's nothing to compute at runtime for this pane.
+            return
+        }
         val sheetExpanded = bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED
         val activeRecycler = when {
             stopDeparturesContainer.visibility == View.VISIBLE -> stopDeparturesRecycler
@@ -1016,5 +1307,17 @@ class MainActivity : AppCompatActivity() {
         private const val FULL_SCHEDULE_WINDOW_SECONDS = 24 * 60 * 60
         private const val FULL_SCHEDULE_COUNT = 200
         private const val TICK_INTERVAL_MILLIS = 30_000L
+        private const val NEARBY_RADIUS_METERS = 900.0
+        private const val METERS_PER_DEGREE_LAT = 111_320.0
+        // Collapsed-sheet peek height as a fraction of available height — the
+        // runtime measurement in setupResultsSheet prefers homePeekRow's own
+        // measured height; this is only the fallback before that's known.
+        private const val HOME_PEEK_FRACTION = 0.1f
+        private const val MIN_PEEK_DP = 56
+        private const val MAX_PEEK_FRACTION = 0.22f
+        // How much of the sheet's parent height STATE_HALF_EXPANDED covers —
+        // enough to show the search form + a few nearby rows while keeping
+        // roughly half the map visible, on any screen height.
+        private const val HOME_HALF_EXPANDED_FRACTION = 0.58f
     }
 }

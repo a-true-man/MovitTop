@@ -36,4 +36,12 @@
 
     <!-- Rav-Kav charging-station map marker -->
     <color name="movitop_ravkav_marker">#0E8F7A</color>
+
+    <!-- POI category markers/chips (see data/Poi.kt's PoiCategory) -->
+    <color name="movitop_poi_food_drink">#E2711D</color>
+    <color name="movitop_poi_shopping">#8E44AD</color>
+    <color name="movitop_poi_health">#D7263D</color>
+    <color name="movitop_poi_finance">#1B5E20</color>
+    <color name="movitop_poi_leisure">#1976D2</color>
+    <color name="movitop_poi_other">#5A6473</color>
 </resources>

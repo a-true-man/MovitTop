@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:maxHeight="480dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="16dp">
+
+        <TextView
+            android:id="@+id/poiName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/movitop_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="קפה גרג" />
+
+        <TextView
+            android:id="@+id/poiOpenNow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            tools:text="פתוח עכשיו"
+            tools:textColor="@color/movitop_departs_soon"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/poiBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:lineSpacingExtra="4dp"
+            android:textColor="@color/movitop_text_secondary"
+            android:textSize="14sp"
+            tools:text="קטגוריה: אוכל ושתייה\nכתובת: הרצל 10, תל אביב" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/poiSetDestinationButton"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="16dp"
+            android:text="@string/poi_set_as_destination"
+            app:backgroundTint="@color/movitop_primary"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/ic_destination_dot"
+            app:iconGravity="textStart" />
+
+    </LinearLayout>
+
+</ScrollView>

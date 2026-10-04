@@ -1,21 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Results bottom sheet. peekHeight=0 keeps it fully hidden until routes are
-     ready; the ViewModel triggers expansion. It hosts two swappable panes:
-     the 5-option summary and the step-by-step route details. -->
+<!-- The one permanent bottom sheet for the whole home screen — never fully
+     hidden any more, so the map stays dominant but search/discovery are
+     always one drag away. peekHeight/halfExpandedRatio below are just layout-
+     editor-preview defaults; MainActivity.setupResultsSheet computes the real
+     values at runtime from the sheet's measured parent height, so the
+     collapsed peek bar stays a small, fixed fraction of whatever screen this
+     actually runs on (2.5" keypad devices through large phones) rather than a
+     guessed dp constant. Hosts four swappable panes (visibility-toggled, see
+     MainActivity.renderRoutingState): Home (search entry + nearby
+     stops/POIs — the resting pane), the route-options summary, step-by-step
+     details, and a tapped stop's departures. -->
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/resultsBottomSheet"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:background="@drawable/bg_bottom_sheet"
     android:descendantFocusability="afterDescendants"
     android:elevation="12dp"
     android:focusable="true"
     android:focusableInTouchMode="false"
-    android:maxHeight="420dp"
-    app:behavior_hideable="true"
-    app:behavior_peekHeight="0dp"
+    app:behavior_fitToContents="false"
+    app:behavior_halfExpandedRatio="0.55"
+    app:behavior_hideable="false"
+    app:behavior_peekHeight="64dp"
     app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
 
     <LinearLayout
@@ -32,12 +41,414 @@
             android:layout_marginBottom="8dp"
             android:background="@drawable/bg_drag_handle" />
 
+        <!-- Pane 0: Home — the sheet's resting pane whenever RoutingState is
+             Idle and no stop is being viewed (see MainActivity.renderRoutingState).
+             homePeekRow + the quick-access icon row are sized to the sheet's
+             collapsed peekHeight (computed at runtime, see setupResultsSheet)
+             so they're what's visible with the sheet collapsed — map stays
+             dominant. Everything in homeExpandedContent only becomes visible
+             as the sheet is dragged/keyed past that point. -->
+        <LinearLayout
+            android:id="@+id/homeContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/homePeekRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="14dp"
+                android:background="@drawable/bg_search_field"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="52dp"
+                android:nextFocusDown="@id/settingsButton"
+                android:orientation="horizontal"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="10dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/ic_search"
+                    app:tint="@color/movitop_text_secondary" />
+
+                <TextView
+                    android:id="@+id/homeSearchPrompt"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/home_search_prompt"
+                    android:textColor="@color/movitop_text_secondary"
+                    android:textSize="15sp" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="18dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/settingsButton"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:contentDescription="@string/settings_button_description"
+                    android:nextFocusUp="@id/homePeekRow"
+                    android:nextFocusDown="@id/lineTimesButton"
+                    app:icon="@drawable/ic_settings"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="18dp"
+                    app:iconTint="@color/movitop_text_secondary" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/lineTimesButton"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="4dp"
+                    android:contentDescription="@string/line_times_button_description"
+                    android:nextFocusUp="@id/homePeekRow"
+                    android:nextFocusDown="@id/originRow"
+                    app:icon="@drawable/ic_schedule"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
+                    app:iconSize="18dp"
+                    app:iconTint="@color/movitop_text_secondary" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/homeExpandedContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="14dp"
+                android:paddingTop="10dp">
+
+                <!-- Origin row -->
+                <LinearLayout
+                    android:id="@+id/originRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_search_field"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="52dp"
+                    android:nextFocusUp="@id/lineTimesButton"
+                    android:nextFocusDown="@id/destinationRow"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="10dp">
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/ic_origin_dot" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/search_origin_hint"
+                            android:textColor="@color/movitop_text_secondary"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/originText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:hint="@string/search_tap_to_choose"
+                            android:maxLines="1"
+                            android:textColor="@color/movitop_text_primary"
+                            android:textColorHint="@color/movitop_text_secondary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- Destination row -->
+                <LinearLayout
+                    android:id="@+id/destinationRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_search_field"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="52dp"
+                    android:nextFocusUp="@id/originRow"
+                    android:nextFocusDown="@id/tripTimeRow"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="10dp">
+
+                    <View
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/ic_destination_dot" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/search_destination_hint"
+                            android:textColor="@color/movitop_text_secondary"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/destinationText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:hint="@string/search_tap_to_choose"
+                            android:maxLines="1"
+                            android:textColor="@color/movitop_text_primary"
+                            android:textColorHint="@color/movitop_text_secondary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tripTimeRow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_search_field"
+                    android:drawablePadding="6dp"
+                    android:focusable="true"
+                    android:nextFocusUp="@id/destinationRow"
+                    android:nextFocusDown="@id/searchButton"
+                    android:paddingHorizontal="12dp"
+                    android:paddingVertical="6dp"
+                    android:text="@string/trip_time_now"
+                    android:textColor="@color/movitop_primary"
+                    android:textSize="13sp"
+                    app:drawableStartCompat="@drawable/ic_schedule" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/searchButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="12dp"
+                    android:focusable="true"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:nextFocusUp="@id/tripTimeRow"
+                    android:nextFocusDown="@id/tripHistoryRecycler"
+                    android:text="@string/search_button"
+                    android:textSize="16sp"
+                    app:backgroundTint="@color/movitop_primary"
+                    app:cornerRadius="14dp"
+                    app:icon="@drawable/ic_search"
+                    app:iconGravity="textStart"
+                    app:iconPadding="8dp"
+                    app:iconTint="@color/movitop_on_primary" />
+
+                <ProgressBar
+                    android:id="@+id/searchProgress"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="8dp"
+                    android:indeterminateTint="@color/movitop_primary"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/tripHistoryTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:paddingBottom="6dp"
+                    android:text="@string/trip_history_title"
+                    android:textColor="@color/movitop_text_secondary"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/tripHistoryRecycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="-14dp"
+                    android:clipToPadding="false"
+                    android:descendantFocusability="afterDescendants"
+                    android:nestedScrollingEnabled="false"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="9dp"
+                    android:paddingBottom="4dp"
+                    android:visibility="gone"
+                    tools:listitem="@layout/item_trip_history"
+                    tools:orientation="horizontal"
+                    tools:visibility="visible" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginHorizontal="-14dp"
+                    android:clipToPadding="false"
+                    android:paddingHorizontal="14dp"
+                    android:scrollbars="none">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/nearbyCategoryChips"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:chipSpacingHorizontal="6dp"
+                    app:singleLine="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipNearbyAll"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="@string/nearby_category_all" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipNearbyTransit"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/poi_category_transit" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipNearbyCharging"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/poi_category_charging" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipNearbyFood"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/poi_category_food_drink" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipNearbyShopping"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/poi_category_shopping" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipNearbyHealth"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/poi_category_health" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipNearbyFinance"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/poi_category_finance" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chipNearbyLeisure"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/poi_category_leisure" />
+
+                </com.google.android.material.chip.ChipGroup>
+
+                </HorizontalScrollView>
+
+                <TextView
+                    android:id="@+id/nearbySortToggle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:focusable="true"
+                    android:padding="4dp"
+                    android:text="@string/nearby_sort_distance"
+                    android:textColor="@color/movitop_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <ProgressBar
+                    android:id="@+id/nearbyProgress"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="16dp"
+                    android:indeterminateTint="@color/movitop_primary"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/nearbyListEmpty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:padding="24dp"
+                    android:text="@string/nearby_empty"
+                    android:textColor="@color/movitop_text_secondary"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/nearbyListRecycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="-14dp"
+                    android:clipToPadding="false"
+                    android:descendantFocusability="afterDescendants"
+                    android:nestedScrollingEnabled="false"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="8dp"
+                    tools:listitem="@layout/item_nearby_place" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
         <!-- Pane 1: direct-modes row + transit suggestions -->
         <LinearLayout
             android:id="@+id/summaryContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
 
             <TextView
                 android:id="@+id/directModesTitle"

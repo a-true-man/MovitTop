@@ -175,17 +175,34 @@
     <string name="map_location_unavailable">Couldn\'t get your location. Check GPS is on and permission is granted.</string>
 
     <!-- Nearby departures -->
-    <string name="nearby_button_description">Nearby departures</string>
-    <string name="nearby_title">Nearby</string>
-    <string name="nearby_subtitle">Upcoming departures near you</string>
     <string name="nearby_empty">No upcoming departures found nearby. Try moving closer to a stop, or check GPS is on.</string>
     <string name="nearby_no_offline_data">No offline transit data is installed on this device yet — import it from the main map screen first.</string>
-    <string name="nearby_locating">Finding your location…</string>
     <string name="nearby_minutes_until">in %1$d min</string>
     <string name="nearby_departing_now">Departing now</string>
-    <string name="nearby_route_to_here">Directions</string>
-    <string name="nearby_refresh">Refresh</string>
     <string name="nearby_distance_meters">%1$d m away</string>
+
+    <!-- Home sheet (search entry + nearby stops/POIs) -->
+    <string name="home_search_prompt">Where to?</string>
+    <string name="trip_history_title">Recent trips</string>
+    <string name="trip_history_pin_description">Pin trip</string>
+    <string name="trip_history_arrow">↓</string>
+    <string name="nearby_category_all">All</string>
+    <string name="nearby_sort_distance">Sort: Nearest</string>
+    <string name="nearby_sort_open_now">Sort: Open now</string>
+
+    <!-- POI categories (data/Poi.kt's PoiCategory + the Home sheet's "transit"/"charging" filter chips) -->
+    <string name="poi_category_transit">Public transit</string>
+    <string name="poi_category_charging">Rav-Kav charging</string>
+    <string name="poi_category_food_drink">Food &amp; drink</string>
+    <string name="poi_category_shopping">Shopping</string>
+    <string name="poi_category_health">Health</string>
+    <string name="poi_category_finance">Finance</string>
+    <string name="poi_category_leisure">Leisure</string>
+    <string name="poi_category_other">Other</string>
+    <string name="poi_label_category">Category</string>
+    <string name="poi_open_now">Open now</string>
+    <string name="poi_closed_now">Closed now</string>
+    <string name="poi_set_as_destination">Set as destination</string>
 
     <!-- Offline data import -->
     <string name="data_import_button_description">Import updated transit data</string>

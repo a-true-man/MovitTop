@@ -60,10 +60,6 @@
             android:exported="false" />
 
         <activity
-            android:name=".nearby.NearbyActivity"
-            android:exported="false" />
-
-        <activity
             android:name=".LiveNavigationActivity"
             android:exported="false"
             android:screenOrientation="portrait" />

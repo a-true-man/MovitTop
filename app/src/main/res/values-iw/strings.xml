@@ -169,17 +169,34 @@
     <string name="map_location_unavailable">לא הצלחנו לאתר את המיקום שלך. ודאו ש-GPS פעיל וההרשאה ניתנה.</string>
 
     <!-- Nearby departures (Hebrew) -->
-    <string name="nearby_button_description">יציאות בקרבת מקום</string>
-    <string name="nearby_title">בקרבת מקום</string>
-    <string name="nearby_subtitle">היציאות הקרובות אליך</string>
     <string name="nearby_empty">לא נמצאו יציאות בקרבת מקום. נסו להתקרב לתחנה, או ודאו ש-GPS פעיל.</string>
     <string name="nearby_no_offline_data">עדיין לא הותקנו נתוני תחבורה ציבורית במכשיר זה — יש לייבא אותם ממסך המפה הראשי קודם.</string>
-    <string name="nearby_locating">מאתר את המיקום שלך…</string>
     <string name="nearby_minutes_until">בעוד %1$d דק׳</string>
     <string name="nearby_departing_now">יוצא עכשיו</string>
-    <string name="nearby_route_to_here">ניווט</string>
-    <string name="nearby_refresh">רענון</string>
     <string name="nearby_distance_meters">%1$d מ׳ מכאן</string>
+
+    <!-- Home sheet — חיפוש + נקודות עניין בסביבה (Hebrew) -->
+    <string name="home_search_prompt">לאן נוסעים?</string>
+    <string name="trip_history_title">נסיעות אחרונות</string>
+    <string name="trip_history_pin_description">נעיצת נסיעה</string>
+    <string name="trip_history_arrow">↓</string>
+    <string name="nearby_category_all">הכל</string>
+    <string name="nearby_sort_distance">מיון: הכי קרוב</string>
+    <string name="nearby_sort_open_now">מיון: פתוח עכשיו</string>
+
+    <!-- קטגוריות נקודות עניין (Hebrew) -->
+    <string name="poi_category_transit">תחבורה ציבורית</string>
+    <string name="poi_category_charging">טעינת רב-קו</string>
+    <string name="poi_category_food_drink">אוכל ושתייה</string>
+    <string name="poi_category_shopping">קניות</string>
+    <string name="poi_category_health">בריאות</string>
+    <string name="poi_category_finance">פיננסים</string>
+    <string name="poi_category_leisure">פנאי</string>
+    <string name="poi_category_other">אחר</string>
+    <string name="poi_label_category">קטגוריה</string>
+    <string name="poi_open_now">פתוח עכשיו</string>
+    <string name="poi_closed_now">סגור עכשיו</string>
+    <string name="poi_set_as_destination">קבע כיעד</string>
 
     <!-- Offline data import (Hebrew) -->
     <string name="data_import_button_description">ייבוא נתוני תחבורה מעודכנים</string>
