@@ -1,6 +1,7 @@
 package iam699030.gmail.movitop
 
 import android.app.DatePickerDialog
+import android.graphics.Rect
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -9,9 +10,12 @@ import android.view.View
 import android.widget.EditText
 import android.widget.TextView
 import androidx.activity.addCallback
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -68,7 +72,21 @@ class LineTimesActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContentView(R.layout.activity_line_times)
+
+        val root = findViewById<View>(R.id.lineTimesRoot)
+        val initialPadding = Rect(root.paddingLeft, root.paddingTop, root.paddingRight, root.paddingBottom)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(
+                initialPadding.left + bars.left,
+                initialPadding.top + bars.top,
+                initialPadding.right + bars.right,
+                initialPadding.bottom + bars.bottom
+            )
+            insets
+        }
 
         searchTitle = findViewById(R.id.lineTimesSearchTitle)
         detailHeader = findViewById(R.id.lineTimesDetailHeader)
@@ -100,6 +118,12 @@ class LineTimesActivity : AppCompatActivity() {
         // explicitly (same pattern as SearchLocationActivity/MainActivity).
         queryInput.setOnKeyListener { _, keyCode, event -> maybeFocusFirstItem(keyCode, event) }
         dateButton.setOnKeyListener { _, keyCode, event -> maybeFocusFirstItem(keyCode, event) }
+        // backButton/directionToggleButton sit in this same chain (see
+        // LineDetail/TripDetail in render()) and need the same explicit jump
+        // — default focus search into the recycler is just as unreliable
+        // from here as it is from queryInput/dateButton above.
+        backButton.setOnKeyListener { _, keyCode, event -> maybeFocusFirstItem(keyCode, event) }
+        directionToggleButton.setOnKeyListener { _, keyCode, event -> maybeFocusFirstItem(keyCode, event) }
 
         backButton.setOnClickListener { goBack() }
         directionToggleButton.setOnClickListener { viewModel.toggleDirection() }

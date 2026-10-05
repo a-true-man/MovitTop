@@ -10,9 +10,11 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -123,7 +125,9 @@ class SplashActivity : AppCompatActivity() {
         withTimeoutOrNull(timeoutMillis) {
             while (isActive) {
                 val ready = try {
-                    client.newCall(request).execute().use { it.isSuccessful }
+                    withContext(Dispatchers.IO) {
+                        client.newCall(request).execute().use { it.isSuccessful }
+                    }
                 } catch (e: Exception) {
                     false
                 }

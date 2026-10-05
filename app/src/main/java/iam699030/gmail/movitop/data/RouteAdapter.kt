@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import iam699030.gmail.movitop.R
+import java.util.Locale
 
 /**
  * Renders TRANSIT [RouteOption] summaries — duration, the chain of lines
@@ -81,6 +82,36 @@ class RouteAdapter(
         }
     }
 
+    /**
+     * Refreshes just the "leaves in X" / via-stop text on already-bound rows
+     * directly on their views, without going through [onBindViewHolder] —
+     * that path rebuilds the whole line-badge chain (see [bindBadges], which
+     * removes and re-inflates a view per badge), which is unnecessary work
+     * to repeat on every relative-time tick when the badges themselves never
+     * change between ticks. See MainActivity's `tickEvery(...)` caller.
+     */
+    fun refreshRelativeTimes(recyclerView: RecyclerView) {
+        for (i in 0 until recyclerView.childCount) {
+            val holder = recyclerView.getChildViewHolder(recyclerView.getChildAt(i)) as? RouteViewHolder ?: continue
+            val position = holder.bindingAdapterPosition
+            if (position == RecyclerView.NO_POSITION) continue
+            val option = getItem(position)
+            val context = holder.itemView.context
+
+            val departEpoch = option.departEpochMillis
+            if (departEpoch != null && !RelativeTime.isStale(departEpoch)) {
+                holder.departsIn.visibility = View.VISIBLE
+                holder.departsIn.text = RelativeTime.describe(context, departEpoch)
+            } else {
+                holder.departsIn.visibility = View.GONE
+            }
+
+            if (!option.viaStopText.isNullOrEmpty()) {
+                holder.viaStop.text = if (departEpoch != null) "· ${option.viaStopText}" else option.viaStopText
+            }
+        }
+    }
+
     /** Rebuilds the badge chain — a variable-length chip-per-line list, so it's built, not bound. */
     private fun bindBadges(row: ViewGroup, badges: List<TransitLineBadge>) {
         row.removeAllViews()
@@ -116,7 +147,7 @@ class RouteAdapter(
             val hoursText = if (hours % 1.0 == 0.0) {
                 hours.toInt().toString()
             } else {
-                String.format("%.1f", hours)
+                String.format(Locale.US, "%.1f", hours)
             }
             context.getString(R.string.duration_hours, hoursText)
         } else {

@@ -26,6 +26,18 @@ class MotisBinaryManager(private val context: Context) {
     @Volatile
     private var logThread: Thread? = null
 
+    // startProcess() runs on a background thread and only learns the final
+    // Process handle once ProcessBuilder.start() returns; if stopProcess()
+    // (called from the service's main-thread onDestroy()) runs in that same
+    // window, it would see process == null, do nothing, and leave a live,
+    // unkillable orphan once startProcess() goes on to assign it. This lock
+    // plus re-checking stopRequested right before publishing `process`
+    // closes that window either way round.
+    private val lifecycleLock = Any()
+
+    @Volatile
+    private var stopRequested = false
+
     /** Absolute path to the installer-extracted, already-executable binary. */
     val binaryPath: File
         get() = File(context.applicationInfo.nativeLibraryDir, BINARY_NAME)
@@ -55,6 +67,7 @@ class MotisBinaryManager(private val context: Context) {
             Log.i(TAG, "MOTIS process already running")
             return process
         }
+        if (stopRequested) return null
 
         val graphDir = File(dataRoot, "data")
         if (!File(graphDir, "config.yml").isFile) {
@@ -64,7 +77,6 @@ class MotisBinaryManager(private val context: Context) {
 
         return try {
             val binary = ensureBinary()
-            val rawLogFile = File(context.cacheDir, "motis_raw.log")
             val pb = ProcessBuilder(
                 binary.absolutePath,
                 "server",
@@ -73,7 +85,17 @@ class MotisBinaryManager(private val context: Context) {
             ).apply {
                 directory(dataRoot)
                 redirectErrorStream(true)
-                redirectOutput(rawLogFile)
+                // Deliberately NOT redirectOutput()'d to a file: that makes
+                // Process.getInputStream() return a dummy/already-closed
+                // stream (see ProcessBuilder docs), which silently broke
+                // streamToLogcat() below — it would hit EOF immediately and
+                // never see a single line MOTIS actually printed. Leaving
+                // this as the default Redirect.PIPE is what makes
+                // streamToLogcat's reader receive real output, so MOTIS's
+                // own stdout/stderr (including the seccomp shim's own
+                // diagnostics) show up under this class's logcat tag instead
+                // of being invisible — critical for diagnosing a release
+                // (non-debuggable) build without adb run-as/root.
                 environment()["TMPDIR"] = context.cacheDir.absolutePath
                 // MOTIS expands a `~`-relative default path (e.g. a shapes
                 // cache dir) internally; without HOME set the process has no
@@ -82,7 +104,16 @@ class MotisBinaryManager(private val context: Context) {
             }
 
             val proc = pb.start()
-            process = proc
+            synchronized(lifecycleLock) {
+                if (stopRequested) {
+                    // stopProcess() ran while this was launching and found
+                    // nothing to stop yet — kill what we just started instead
+                    // of publishing a handle nothing will ever stop again.
+                    proc.destroy()
+                    return null
+                }
+                process = proc
+            }
             logThread = thread(name = "motis-logcat", isDaemon = true) {
                 streamToLogcat(proc)
             }
@@ -94,9 +125,12 @@ class MotisBinaryManager(private val context: Context) {
         }
     }
 
-    /** Sends SIGTERM to the child process and clears the handle. */
+    /** Sends SIGTERM to the child process and clears the handle. Once called, this manager will never start another process (see [startProcess]). */
     fun stopProcess() {
-        val proc = process ?: return
+        val proc = synchronized(lifecycleLock) {
+            stopRequested = true
+            process ?: return
+        }
         try {
             if (proc.isAliveCompat()) {
                 proc.destroy()

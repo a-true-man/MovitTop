@@ -57,8 +57,10 @@ class SearchLocationActivity : AppCompatActivity() {
     private var workPlaceName: String? = null
 
     private val requestLocationPermission = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted -> if (granted) locateCurrentPosition() else showLocationUnavailable() }
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        if (results[Manifest.permission.ACCESS_FINE_LOCATION] == true) locateCurrentPosition() else showLocationUnavailable()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -272,7 +274,9 @@ class SearchLocationActivity : AppCompatActivity() {
         ) {
             locateCurrentPosition()
         } else {
-            requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            requestLocationPermission.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            )
         }
     }
 

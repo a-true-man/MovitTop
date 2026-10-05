@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import iam699030.gmail.movitop.R
+import java.util.Locale
 
 /**
  * Quick-switch strip shown above the route detail pane — every option from
@@ -94,7 +95,7 @@ class RouteSwitchAdapter(
     private fun formatDuration(context: android.content.Context, minutes: Int): String =
         if (minutes >= 60) {
             val hours = minutes / 60.0
-            val hoursText = if (hours % 1.0 == 0.0) hours.toInt().toString() else String.format("%.1f", hours)
+            val hoursText = if (hours % 1.0 == 0.0) hours.toInt().toString() else String.format(Locale.US, "%.1f", hours)
             context.getString(R.string.duration_hours, hoursText)
         } else {
             context.getString(R.string.duration_minutes, minutes)

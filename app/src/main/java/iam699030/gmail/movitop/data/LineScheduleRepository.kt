@@ -47,11 +47,22 @@ data class TripStop(
  * "Line times" screen — a search-a-line-see-its-schedule feature that's a
  * plain local lookup, not a routing query, so it doesn't touch the MOTIS
  * engine at all.
+ *
+ * Schema is normalized: route-level fields (short/long name, agency,
+ * terminal stops, direction pairing) live once per route_id in `routes`,
+ * joined in rather than repeated on every one of that route's rows in
+ * `departures` like the pre-normalization schema did. Times are stored as
+ * INTEGER seconds-since-midnight rather than "HH:MM:SS" TEXT; [secondsToGtfsTime]
+ * converts back to that same text format so every type in this file keeps
+ * its original shape for callers (see [LineDeparture.departureTime]).
  */
 class LineScheduleRepository(private val context: Context) {
 
+    // Internal storage, not getExternalFilesDir() — see the comment on
+    // MotisForegroundService.motisDataDir(); SQLite's own locking/journaling
+    // is also known to misbehave and run slowly on FUSE-backed storage.
     private val dbFile: File
-        get() = File(context.getExternalFilesDir(null), "motis_data/data/line_schedules.sqlite")
+        get() = File(context.filesDir, "motis_data/data/line_schedules.sqlite")
 
     fun isAvailable(): Boolean = dbFile.isFile
 
@@ -102,11 +113,13 @@ class LineScheduleRepository(private val context: Context) {
             val results = mutableListOf<LineSummary>()
             it.rawQuery(
                 """
-                SELECT DISTINCT route_id, route_short_name, route_long_name, agency_name,
-                       first_stop_name, last_stop_name, paired_route_id
-                FROM departures
+                SELECT r.route_id, r.route_short_name, r.route_long_name, r.agency_name,
+                       s1.stop_name, s2.stop_name, r.paired_route_id
+                FROM routes r
+                LEFT JOIN stops s1 ON s1.stop_id = r.first_stop_id
+                LEFT JOIN stops s2 ON s2.stop_id = r.last_stop_id
                 WHERE $whereClause
-                ORDER BY route_short_name
+                ORDER BY r.route_short_name
                 """.trimIndent(),
                 arrayOf(whereArg)
             ).use { cursor ->
@@ -139,12 +152,13 @@ class LineScheduleRepository(private val context: Context) {
                 val results = mutableListOf<LineDeparture>()
                 it.rawQuery(
                     """
-                    SELECT d.trip_id, d.route_short_name, d.route_long_name, d.agency_name,
+                    SELECT d.trip_id, r.route_short_name, r.route_long_name, r.agency_name,
                            d.headsign, d.departure_time
                     FROM departures d
+                    JOIN routes r ON r.route_id = d.route_id
                     JOIN calendar c ON c.service_id = d.service_id
                     WHERE d.route_id = ?
-                      AND c.$dayColumn = '1'
+                      AND c.$dayColumn = 1
                       AND c.start_date <= ? AND c.end_date >= ?
                     ORDER BY d.departure_time
                     """.trimIndent(),
@@ -157,7 +171,7 @@ class LineScheduleRepository(private val context: Context) {
                             routeLongName = cursor.getString(2) ?: "",
                             agencyName = cursor.getString(3) ?: "",
                             headsign = cursor.getString(4) ?: "",
-                            departureTime = cursor.getString(5) ?: ""
+                            departureTime = secondsToGtfsTime(cursor.getLong(5))
                         )
                     }
                 }
@@ -189,7 +203,7 @@ class LineScheduleRepository(private val context: Context) {
                     while (cursor.moveToNext()) {
                         results += TripStop(
                             stopName = cursor.getString(0) ?: "",
-                            arrivalTime = cursor.getString(1) ?: ""
+                            arrivalTime = secondsToGtfsTime(cursor.getLong(1))
                         )
                     }
                 }
@@ -199,6 +213,14 @@ class LineScheduleRepository(private val context: Context) {
             Log.e(TAG, "Trip stops query failed", e)
             emptyList()
         }
+    }
+
+    /** Inverse of build_line_schedules.py's seconds encoding — GTFS allows hour >= 24 for past-midnight trips, same as the TEXT format this replaces. */
+    private fun secondsToGtfsTime(totalSeconds: Long): String {
+        val h = totalSeconds / 3600
+        val m = (totalSeconds % 3600) / 60
+        val s = totalSeconds % 60
+        return "%02d:%02d:%02d".format(h, m, s)
     }
 
     private fun dayColumnFor(date: Date): String {

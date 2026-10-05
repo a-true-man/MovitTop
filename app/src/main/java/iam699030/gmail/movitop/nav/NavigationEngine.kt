@@ -47,15 +47,23 @@ class NavigationEngine(
 
     fun start(scope: CoroutineScope) {
         navScope = scope
-        locationTracker?.let { tracker ->
-            scope.launch {
-                tracker.updates().collectLatest { point ->
-                    lastGpsPoint = point
-                    onGpsPoint(point)
-                }
-            }
-        }
         runScheduleForCurrentStep()
+    }
+
+    /**
+     * Collects GPS fixes until the calling coroutine is cancelled. Call this
+     * from a lifecycle-gated scope (e.g. inside `repeatOnLifecycle(STARTED)`)
+     * so location polling actually pauses while the screen/app is
+     * backgrounded, unlike the schedule countdown in [start] — that one
+     * deliberately keeps running on the raw scope, since it represents real
+     * elapsed time that shouldn't reset just because the user isn't looking.
+     */
+    suspend fun trackGps() {
+        val tracker = locationTracker ?: return
+        tracker.updates().collectLatest { point ->
+            lastGpsPoint = point
+            onGpsPoint(point)
+        }
     }
 
     fun manualAdvance() {

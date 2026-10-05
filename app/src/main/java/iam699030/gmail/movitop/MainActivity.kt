@@ -137,8 +137,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nearbyListRecycler: RecyclerView
 
     private val requestLocationPermission = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted -> if (granted) centerOnMyLocation() }
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results -> if (results[Manifest.permission.ACCESS_FINE_LOCATION] == true) centerOnMyLocation() }
 
     // Android 13+ hides a foreground service's notification (the on-device
     // routing engine's only visible sign of life) until this is granted —
@@ -317,7 +317,7 @@ class MainActivity : AppCompatActivity() {
         // RelativeTime. Covers the route-search summary cards and whichever
         // of the two stop-tap adapters is currently attached.
         tickEvery(TICK_INTERVAL_MILLIS) {
-            routeAdapter.notifyDataSetChanged()
+            routeAdapter.refreshRelativeTimes(resultsRecycler)
             stopDeparturesRecycler.adapter?.notifyDataSetChanged()
         }
     }
@@ -405,7 +405,7 @@ class MainActivity : AppCompatActivity() {
             mapView.model.frameBufferModel.overdrawFactor
         )
 
-        val mapFile = File(getExternalFilesDir(null), "motis_data/israel.map")
+        val mapFile = File(filesDir, "motis_data/israel.map")
         if (mapFile.exists()) {
             val mapStore = MapFile(mapFile)
             val rendererLayer = TileRendererLayer(
@@ -473,7 +473,9 @@ class MainActivity : AppCompatActivity() {
         ) {
             centerOnMyLocation()
         } else {
-            requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            requestLocationPermission.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            )
         }
     }
 
@@ -739,6 +741,10 @@ class MainActivity : AppCompatActivity() {
                         if (homeContainer.visibility == View.VISIBLE) homePeekRow.requestFocus()
                         updateFocusChain()
                     }
+                    // STATE_DRAGGING/STATE_SETTLING are transient in-motion states (and
+                    // STATE_HIDDEN is unreachable since isHideable = false) — intentionally
+                    // not acted on here.
+                    else -> Unit
                 }
             }
 
@@ -952,8 +958,12 @@ class MainActivity : AppCompatActivity() {
         fun refreshModeButtons() {
             val selectedColor = ContextCompat.getColor(this, R.color.movitop_primary)
             val unselectedColor = ContextCompat.getColor(this, R.color.movitop_chip_bg)
+            val selectedTextColor = ContextCompat.getColor(this, R.color.movitop_on_primary)
+            val unselectedTextColor = ContextCompat.getColor(this, R.color.movitop_chip_text)
             modeDepart.setBackgroundColor(if (!arriveBy) selectedColor else unselectedColor)
             modeArrive.setBackgroundColor(if (arriveBy) selectedColor else unselectedColor)
+            modeDepart.setTextColor(if (!arriveBy) selectedTextColor else unselectedTextColor)
+            modeArrive.setTextColor(if (arriveBy) selectedTextColor else unselectedTextColor)
         }
         refreshModeButtons()
         modeDepart.setOnClickListener { arriveBy = false; refreshModeButtons() }
@@ -1287,7 +1297,7 @@ class MainActivity : AppCompatActivity() {
         if (minutes >= 60) {
             val hours = minutes / 60.0
             val hoursText = if (hours % 1.0 == 0.0) hours.toInt().toString()
-            else String.format("%.1f", hours)
+            else String.format(Locale.US, "%.1f", hours)
             getString(R.string.duration_hours, hoursText)
         } else {
             getString(R.string.duration_minutes, minutes)

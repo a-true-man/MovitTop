@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Movitop</string>
+    <string name="app_name" translatable="false">Movitop</string>
 
     <!-- Splash screen — brand names are shown in English regardless of
          locale (same convention as "Powered by Android" on stock boot). -->
@@ -180,6 +180,7 @@
     <string name="nearby_minutes_until">in %1$d min</string>
     <string name="nearby_departing_now">Departing now</string>
     <string name="nearby_distance_meters">%1$d m away</string>
+    <string name="nearby_label_with_distance">%1$s · %2$s</string>
 
     <!-- Home sheet (search entry + nearby stops/POIs) -->
     <string name="home_search_prompt">Where to?</string>

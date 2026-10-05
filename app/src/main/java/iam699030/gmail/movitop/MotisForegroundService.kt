@@ -107,9 +107,21 @@ class MotisForegroundService : Service() {
          * Root directory pushed by [push_data_to_device.sh]:
          *   motis_data/data/   — compiled MOTIS graph + config.yml
          *   motis_data/israel.map
+         *
+         * Deliberately internal storage (filesDir), not
+         * getExternalFilesDir(): external storage is FUSE-backed, and the
+         * MOTIS graph (mmap-heavy custom binary format + LMDB), the mapsforge
+         * .map file (random-access reads), and line_schedules.sqlite are all
+         * exactly the mmap/random-I/O-heavy access pattern FUSE is slow at —
+         * under the real app sandbox (not adb shell, which takes a different,
+         * unthrottled path to the same FUSE mount) this was reproduced to
+         * make the on-device MOTIS server take 20+ minutes of ~100% single
+         * core CPU before answering a single request, for a data set that
+         * loads and serves in under a second from internal storage or a
+         * plain Linux filesystem with the exact same binary and data.
          */
         fun motisDataDir(context: Context): File =
-            File(context.getExternalFilesDir(null), "motis_data")
+            File(context.filesDir, "motis_data")
 
         /**
          * Whether a routable graph is actually installed on this device yet.

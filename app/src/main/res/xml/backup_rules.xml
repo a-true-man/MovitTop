@@ -6,8 +6,10 @@
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <!-- The offline MOTIS transit graph + map + schedule DB (see
+         MotisForegroundService.motisDataDir) lives under filesDir/motis_data/
+         and can be several GB — it's re-importable offline data, not user
+         content, so backing it up would be slow, wasteful, and pointless to
+         restore (a restored device still needs the data re-pushed anyway). -->
+    <exclude domain="file" path="motis_data/" />
 </full-backup-content>

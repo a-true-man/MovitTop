@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import iam699030.gmail.movitop.R
+import java.util.Locale
 
 /**
  * Compact walk/bike/driver/taxi cards shown in a horizontal row above the
@@ -73,7 +74,7 @@ class DirectModeAdapter(
     private fun formatDuration(context: android.content.Context, minutes: Int): String =
         if (minutes >= 60) {
             val hours = minutes / 60.0
-            val hoursText = if (hours % 1.0 == 0.0) hours.toInt().toString() else String.format("%.1f", hours)
+            val hoursText = if (hours % 1.0 == 0.0) hours.toInt().toString() else String.format(Locale.US, "%.1f", hours)
             context.getString(R.string.duration_hours, hoursText)
         } else {
             context.getString(R.string.duration_minutes, minutes)

@@ -4,16 +4,14 @@
    for details.
 -->
 <data-extraction-rules>
+    <!-- The offline MOTIS transit graph + map + schedule DB (see
+         MotisForegroundService.motisDataDir) lives under filesDir/motis_data/
+         and can be several GB — it's re-importable offline data, not user
+         content, so backing/transferring it would be slow and pointless. -->
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="file" path="motis_data/" />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="file" path="motis_data/" />
     </device-transfer>
-    -->
 </data-extraction-rules>

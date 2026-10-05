@@ -69,7 +69,7 @@ class NearbyListAdapter(
             departure.routeShortName
         }
         val distanceText = context.getString(R.string.nearby_distance_meters, departure.distanceMeters.toInt())
-        holder.stopInfo.text = "${departure.stopName} · $distanceText"
+        holder.stopInfo.text = context.getString(R.string.nearby_label_with_distance, departure.stopName, distanceText)
         holder.time.text = departure.departTimeText
         holder.minutes.text = if (RelativeTime.isStale(departure.departEpochMillis)) {
             ""
@@ -95,12 +95,20 @@ class NearbyListAdapter(
         when (item) {
             is NearbyListItem.RavKav -> {
                 holder.name.text = item.station.name
-                holder.subtitle.text = "${context.getString(R.string.poi_category_charging)} · $distanceText"
+                holder.subtitle.text = context.getString(
+                    R.string.nearby_label_with_distance,
+                    context.getString(R.string.poi_category_charging),
+                    distanceText
+                )
                 dotColor = androidx.core.content.ContextCompat.getColor(context, R.color.movitop_ravkav_marker)
             }
             is NearbyListItem.Place -> {
                 holder.name.text = item.poi.name
-                holder.subtitle.text = "${context.getString(item.poi.category.labelRes)} · $distanceText"
+                holder.subtitle.text = context.getString(
+                    R.string.nearby_label_with_distance,
+                    context.getString(item.poi.category.labelRes),
+                    distanceText
+                )
                 dotColor = androidx.core.content.ContextCompat.getColor(context, poiDotColorRes(item.poi.category))
             }
             else -> return

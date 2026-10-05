@@ -35,7 +35,9 @@ class LineSummaryAdapter(
 
     /** Refreshes which cards show as starred without touching the line list itself. */
     fun setFavorites(lineIds: Collection<String>) {
-        favoriteLineIds = lineIds.toSet()
+        val updated = lineIds.toSet()
+        if (updated == favoriteLineIds) return
+        favoriteLineIds = updated
         notifyDataSetChanged()
     }
 

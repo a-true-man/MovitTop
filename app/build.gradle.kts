@@ -23,10 +23,24 @@ android {
         applicationId = "iam699030.gmail.movitop"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Real phones are effectively 100% arm64-v8a — x86_64 only matters
+        // for emulators/Chromebooks, which isn't who this app ships to (see
+        // package_motis_data.sh: APKs are handed out directly, not through
+        // Play Store's per-device delivery, so whatever ships here is the
+        // one file every user installs). libmotis.so alone is ~95-100MB per
+        // ABI, so a universal APK effectively pays for it twice. The
+        // x86_64 .so under app/src/main/jniLibs/x86_64/ stays on disk
+        // unchanged — compile_motis_graph.sh still uses it directly as its
+        // dev-machine preprocessing binary, this filter only affects what
+        // Gradle packages into the APK.
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     signingConfigs {

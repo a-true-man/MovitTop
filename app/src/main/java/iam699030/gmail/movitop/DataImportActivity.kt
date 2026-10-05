@@ -1,12 +1,16 @@
 package iam699030.gmail.movitop
 
+import android.graphics.Rect
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import iam699030.gmail.movitop.data.DataImportManager
@@ -32,7 +36,21 @@ class DataImportActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContentView(R.layout.activity_data_import)
+
+        val root = findViewById<View>(R.id.dataImportRoot)
+        val initialPadding = Rect(root.paddingLeft, root.paddingTop, root.paddingRight, root.paddingBottom)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(
+                initialPadding.left + bars.left,
+                initialPadding.top + bars.top,
+                initialPadding.right + bars.right,
+                initialPadding.bottom + bars.bottom
+            )
+            insets
+        }
 
         statusText = findViewById(R.id.importStatus)
         progress = findViewById(R.id.importProgress)

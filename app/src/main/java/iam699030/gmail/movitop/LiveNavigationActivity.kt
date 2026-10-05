@@ -2,15 +2,20 @@ package iam699030.gmail.movitop
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.view.View
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -43,7 +48,7 @@ class LiveNavigationActivity : AppCompatActivity() {
     private var steps: List<NavigationStep> = emptyList()
 
     private val requestLocationPermission = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { _ -> startEngine() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +61,22 @@ class LiveNavigationActivity : AppCompatActivity() {
         steps = pending
         PendingNavigation.steps = null
 
+        enableEdgeToEdge()
         setContentView(R.layout.activity_live_navigation)
+
+        val root = findViewById<View>(R.id.navRoot)
+        val initialPadding = Rect(root.paddingLeft, root.paddingTop, root.paddingRight, root.paddingBottom)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(
+                initialPadding.left + bars.left,
+                initialPadding.top + bars.top,
+                initialPadding.right + bars.right,
+                initialPadding.bottom + bars.bottom
+            )
+            insets
+        }
+
         modeText = findViewById(R.id.navModeText)
         instructionText = findViewById(R.id.navInstructionText)
         distanceText = findViewById(R.id.navDistanceText)
@@ -76,7 +96,9 @@ class LiveNavigationActivity : AppCompatActivity() {
         ) {
             startEngine()
         } else {
-            requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            requestLocationPermission.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            )
         }
     }
 
@@ -124,6 +146,9 @@ class LiveNavigationActivity : AppCompatActivity() {
                 }
                 launch {
                     engine.stepChanged.collect { vibrate() }
+                }
+                launch {
+                    engine.trackGps()
                 }
             }
         }

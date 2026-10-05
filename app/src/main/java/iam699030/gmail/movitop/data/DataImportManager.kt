@@ -32,8 +32,11 @@ class DataImportManager(private val context: Context) {
         data class Failure(val reason: String) : Result
     }
 
+    // Internal storage, not getExternalFilesDir() — see the comment on
+    // MotisForegroundService.motisDataDir(), the canonical definition of this
+    // same path; external storage's FUSE layer is badly suited to this data.
     private val motisRoot: File
-        get() = File(context.getExternalFilesDir(null), "motis_data")
+        get() = File(context.filesDir, "motis_data")
 
     suspend fun import(uri: Uri): Result = withContext(Dispatchers.IO) {
         importBlocking(uri)

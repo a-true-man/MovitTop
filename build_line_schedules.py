@@ -9,6 +9,17 @@ of route X today") or parsing the ~1GB stop_times.txt on-device, this does a
 one-time pass on the dev machine and ships a compact SQLite file
 (movitop_data/data/line_schedules.sqlite) alongside the compiled graph.
 
+Schema is normalized: route-level fields (short/long name, agency, terminal
+stop names, direction pairing) live once per route_id in `routes`, not once
+per trip in `departures` — route_short_name/route_long_name/agency_name were
+previously duplicated across every one of a route's trips even though only a
+few thousand distinct routes exist nationwide. Stop times are stored as
+INTEGER seconds-since-midnight instead of "HH:MM:SS" TEXT (GTFS-style, so
+still >24:00:00 for past-midnight trips — LineScheduleRepository.kt converts
+back to that same text format before returning to callers, so nothing above
+the DB layer changes). Together these cut the file from ~865MB to well under
+200MB with the exact same query results.
+
 Route short names are reused across completely unrelated lines in Israel's
 national GTFS (e.g. "133" covers five distinct lines run by different
 agencies in different cities), so this also pairs up each route's two
@@ -53,6 +64,29 @@ def terminals_distance_km(
     return haversine_km(a, b) if a is not None and b is not None else None
 
 
+def gtfs_time_to_seconds(t: str | float | None) -> int | None:
+    """"HH:MM:SS" (hour may exceed 23 for past-midnight trips) -> total seconds."""
+    if t is None or (isinstance(t, float) and math.isnan(t)):
+        return None
+    parts = str(t).split(":")
+    if len(parts) != 3:
+        return None
+    try:
+        h, m, s = (int(p) for p in parts)
+    except ValueError:
+        return None
+    return h * 3600 + m * 60 + s
+
+
+def gtfs_time_series_to_seconds(series: pd.Series) -> pd.Series:
+    """Vectorized version of [gtfs_time_to_seconds] for the ~18M-row stop_times pass."""
+    parts = series.fillna("00:00:00").str.split(":", n=2, expand=True)
+    h = pd.to_numeric(parts[0], errors="coerce").fillna(0).astype("int64")
+    m = pd.to_numeric(parts[1], errors="coerce").fillna(0).astype("int64")
+    s = pd.to_numeric(parts[2], errors="coerce").fillna(0).astype("int64")
+    return h * 3600 + m * 60 + s
+
+
 def build(gtfs_zip: Path, output_db: Path) -> None:
     if output_db.exists():
         output_db.unlink()
@@ -63,6 +97,14 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
     # build speed across the ~18M-row stop_times insert below.
     conn.execute("PRAGMA synchronous=OFF")
     conn.execute("PRAGMA journal_mode=MEMORY")
+    # Must be set before any table is created. Measured 1024/4096/8192/16384
+    # on this same data: SQLite's own default (4096) was the *worst* of the
+    # four (393.7MB) — 8192 measured 342.4MB, matching 16384/32768 almost
+    # exactly, so it's the smallest page size that still gets the full
+    # benefit (larger pages amortize the per-page b-tree header over more of
+    # stop_times' 17.8M narrow rows) without going larger than needed for a
+    # table that's mostly read as single-row point lookups on-device.
+    conn.execute("PRAGMA page_size=8192")
     create_schema(conn)
 
     with zipfile.ZipFile(gtfs_zip) as z:
@@ -125,6 +167,11 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
         for i, chunk in enumerate(chunk_iter):
             chunk["arrival_time"] = chunk["arrival_time"].fillna(chunk["departure_time"])
 
+            # first/last-stop dicts keep the raw "HH:MM:SS" text (only a
+            # handful of scalar conversions happen later, in the departures
+            # pass) — the seconds conversion below is only for the bulk
+            # per-row stop_times insert, where it has to be vectorized to
+            # keep up with ~18M rows.
             chunk_first = chunk.loc[chunk.groupby("trip_id")["stop_sequence"].idxmin()]
             chunk_last = chunk.loc[chunk.groupby("trip_id")["stop_sequence"].idxmax()]
             for row in chunk_first.itertuples(index=False):
@@ -137,16 +184,14 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
                     last_stop[row.trip_id] = (row.stop_sequence, row.arrival_time, row.stop_id)
 
             chunk["trip_row_id"] = chunk["trip_id"].map(trip_id_to_row_id)
+            chunk["arrival_seconds"] = gtfs_time_series_to_seconds(chunk["arrival_time"])
             mapped = chunk.dropna(subset=["trip_row_id"])
             conn.executemany(
                 insert_stop_times,
-                mapped[["trip_row_id", "stop_sequence", "stop_id", "arrival_time"]].itertuples(index=False, name=None),
+                mapped[["trip_row_id", "stop_sequence", "stop_id", "arrival_seconds"]].itertuples(index=False, name=None),
             )
             conn.commit()
             print(f"  ...chunk {i + 1}, {len(first_stop)} trips seen so far")
-
-    print("Indexing stop_times ...")
-    conn.execute("CREATE INDEX idx_stop_times_trip ON stop_times(trip_row_id, stop_sequence)")
 
     print("Joining trips + routes + agency ...")
     trips = trips.merge(routes, on="route_id", how="left")
@@ -160,7 +205,12 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
         with_terminals.groupby(["route_id", "first_stop_id", "last_stop_id"])
         .size()
         .reset_index(name="n")
-        .sort_values("n", ascending=False)
+        # Tie-break on the terminal ids themselves (not just "n") and sort
+        # with a stable algorithm: plain sort_values("n") is quicksort by
+        # default, so a route_id with two terminal pairs tied on trip count
+        # could keep either one across rebuilds — silently reassigning which
+        # route_id represents a merged line/its terminal names run to run.
+        .sort_values(["n", "first_stop_id", "last_stop_id"], ascending=[False, True, True], kind="mergesort")
         .drop_duplicates("route_id")
         .set_index("route_id")
     )
@@ -204,53 +254,68 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
     for route_id in terminal_counts.index:
         line_group_id.setdefault(route_id, route_id)
 
+    print(f"Writing {len(terminal_counts)} routes ...")
+    route_rows = []
+    for route_id in terminal_counts.index:
+        meta = route_meta.loc[route_id] if route_id in route_meta.index else None
+        first_id, last_id = terminal_counts.loc[route_id, ["first_stop_id", "last_stop_id"]]
+        route_rows.append((
+            route_id,
+            (meta["route_short_name"] if meta is not None else "") or "",
+            (meta["route_long_name"] if meta is not None else "") or "",
+            (meta["agency_name"] if meta is not None else "") or "",
+            int(first_id),
+            int(last_id),
+            line_group_id[route_id],
+            paired_route_id.get(route_id),
+        ))
+    conn.executemany("INSERT INTO routes VALUES (?,?,?,?,?,?,?,?)", route_rows)
+    conn.execute("CREATE INDEX idx_routes_line_group ON routes(line_group_id)")
+
     print("Building departures rows ...")
-    rows = []
+    dep_rows = []
     for t in trips.itertuples(index=False):
         if t.trip_id not in first_stop or t.route_id not in terminal_counts.index:
             continue
         _, dep_time, _ = first_stop[t.trip_id]
-        first_id, last_id = terminal_counts.loc[t.route_id, ["first_stop_id", "last_stop_id"]]
-        rows.append((
+        try:
+            direction_id = int(t.direction_id) if t.direction_id not in (None, "") else 0
+        except ValueError:
+            direction_id = 0
+        dep_rows.append((
             trip_id_to_row_id[t.trip_id],
             t.route_id,
-            t.route_short_name or "",
-            t.route_long_name or "",
-            t.agency_name or "",
             t.service_id,
             t.trip_id,
             t.trip_headsign or "",
-            t.direction_id or "0",
-            stop_names.get(first_id, ""),
-            stop_names.get(last_id, ""),
-            dep_time,
-            line_group_id[t.route_id],
-            paired_route_id.get(t.route_id),
+            direction_id,
+            gtfs_time_to_seconds(dep_time) or 0,
         ))
 
-    print(f"Writing {len(rows)} trip departures + {len(calendar)} calendar rows to {output_db} ...")
+    print(f"Writing {len(dep_rows)} trip departures + {len(calendar)} calendar rows to {output_db} ...")
     conn.executemany(
-        "INSERT INTO departures VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows
+        "INSERT INTO departures VALUES (?,?,?,?,?,?,?)", dep_rows
     )
-    conn.execute("CREATE INDEX idx_departures_route_short ON departures(route_short_name)")
-    conn.execute("CREATE INDEX idx_departures_service ON departures(service_id)")
     conn.execute("CREATE INDEX idx_departures_route_id ON departures(route_id)")
     conn.execute("CREATE INDEX idx_departures_trip_id ON departures(trip_id)")
-    conn.execute("CREATE INDEX idx_departures_line_group ON departures(line_group_id)")
 
     conn.executemany(
         "INSERT INTO stops VALUES (?, ?)", stop_names.items()
     )
 
+    calendar_days = calendar[["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]].apply(
+        lambda col: pd.to_numeric(col, errors="coerce").fillna(0).astype(int)
+    )
     conn.executemany(
         "INSERT INTO calendar VALUES (?,?,?,?,?,?,?,?,?,?)",
-        calendar[[
-            "service_id", "monday", "tuesday", "wednesday", "thursday",
-            "friday", "saturday", "sunday", "start_date", "end_date",
-        ]].itertuples(index=False, name=None),
+        pd.concat(
+            [calendar[["service_id"]], calendar_days, calendar[["start_date", "end_date"]]], axis=1
+        ).itertuples(index=False, name=None),
     )
-    conn.execute("CREATE INDEX idx_calendar_service ON calendar(service_id)")
     conn.commit()
+
+    print("Vacuuming (repacks pages left ~10% underfilled by the incremental build) ...")
+    conn.execute("VACUUM")
     conn.close()
 
     size_mb = output_db.stat().st_size / (1024 * 1024)
@@ -258,27 +323,42 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
 
 
 def create_schema(conn: sqlite3.Connection) -> None:
+    # Route-level fields (name/agency/terminals/direction-pairing) live once
+    # per route here instead of being repeated on every one of that route's
+    # trip rows in `departures` — see module docstring.
     conn.execute("""
-        CREATE TABLE departures (
-            id INTEGER PRIMARY KEY,
-            route_id TEXT, route_short_name TEXT, route_long_name TEXT,
-            agency_name TEXT, service_id TEXT, trip_id TEXT,
-            headsign TEXT, direction_id TEXT,
-            first_stop_name TEXT, last_stop_name TEXT, departure_time TEXT,
+        CREATE TABLE routes (
+            route_id TEXT PRIMARY KEY,
+            route_short_name TEXT, route_long_name TEXT, agency_name TEXT,
+            first_stop_id INTEGER, last_stop_id INTEGER,
             line_group_id TEXT, paired_route_id TEXT
         )
     """)
     conn.execute("CREATE TABLE stops (stop_id INTEGER PRIMARY KEY, stop_name TEXT)")
     conn.execute("""
-        CREATE TABLE stop_times (
-            trip_row_id INTEGER, stop_sequence INTEGER,
-            stop_id INTEGER, arrival_time TEXT
+        CREATE TABLE departures (
+            id INTEGER PRIMARY KEY,
+            route_id TEXT, service_id TEXT, trip_id TEXT,
+            headsign TEXT, direction_id INTEGER, departure_time INTEGER
         )
+    """)
+    # WITHOUT ROWID + a composite key clusters the table itself in
+    # (trip_row_id, stop_sequence) order instead of keeping a separate
+    # ~260MB secondary index for that same lookup — this table alone was
+    # ~630MB of the old ~865MB file (17.8M rows), so it's worth the less
+    # common table form. Safe here because that pair is verified unique
+    # per trip in the source feed (checked against the live GTFS export).
+    conn.execute("""
+        CREATE TABLE stop_times (
+            trip_row_id INTEGER NOT NULL, stop_sequence INTEGER NOT NULL,
+            stop_id INTEGER, arrival_time INTEGER,
+            PRIMARY KEY (trip_row_id, stop_sequence)
+        ) WITHOUT ROWID
     """)
     conn.execute("""
         CREATE TABLE calendar (
-            service_id TEXT, monday TEXT, tuesday TEXT, wednesday TEXT,
-            thursday TEXT, friday TEXT, saturday TEXT, sunday TEXT,
+            service_id TEXT PRIMARY KEY, monday INTEGER, tuesday INTEGER, wednesday INTEGER,
+            thursday INTEGER, friday INTEGER, saturday INTEGER, sunday INTEGER,
             start_date TEXT, end_date TEXT
         )
     """)

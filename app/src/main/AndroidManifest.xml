@@ -11,8 +11,23 @@
          Android resolves via an online Google service and would break the
          fully-offline requirement. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Android 12+ silently downgrades a FINE-only request to COARSE-only
+         unless COARSE is also declared — this app's own code only ever acts
+         on a granted ACCESS_FINE_LOCATION (see MainActivity/SearchLocation-
+         Activity/LiveNavigationActivity), so without this the live-GPS path
+         would quietly stop working on modern devices. Still satellite-GPS
+         only: LocationTracker never touches NETWORK_PROVIDER, so declaring
+         this doesn't pull in any online/network location lookups. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-feature
         android:name="android.hardware.location.gps"
+        android:required="false" />
+    <!-- This app targets keypad-only devices with no touchscreen (see
+         feedback-movitop-dpad-convention) — without this, Android treats
+         a touchscreen as required by default and filters the app away from
+         exactly the hardware it's built for. -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
         android:required="false" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
@@ -25,7 +40,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Movitop"
-        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="31">
         <activity
             android:name=".SplashActivity"
