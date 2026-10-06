@@ -1,6 +1,7 @@
 package iam699030.gmail.movitop.nav
 
 import iam699030.gmail.movitop.data.GeoPoint
+import iam699030.gmail.movitop.data.ReminderSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -17,8 +18,14 @@ data class NavState(
     val step: NavigationStep?,
     val distanceToTargetMeters: Double? = null,
     val usingGps: Boolean = false,
-    val finished: Boolean = false
+    val finished: Boolean = false,
+    /** Stops left until the alight stop on the current [NavigationStep.Ride], once GPS has matched at least one. */
+    val ridingStopsRemaining: Int? = null,
+    /** Last known GPS fix, carried across step transitions — the live-nav map's position marker. */
+    val currentPosition: GeoPoint? = null
 )
+
+data class ReminderEvent(val stopsRemaining: Int, val alightStopName: String)
 
 /**
  * Drives progress through a [NavigationStep] list. Hybrid by design (per
@@ -29,8 +36,9 @@ data class NavState(
  * always available regardless of mode.
  */
 class NavigationEngine(
-    private val steps: List<NavigationStep>,
-    private val locationTracker: LocationTracker?
+    val steps: List<NavigationStep>,
+    private val locationTracker: LocationTracker?,
+    private var reminderSettings: ReminderSettings = ReminderSettings()
 ) {
     private val _state = MutableStateFlow(
         NavState(stepIndex = 0, step = steps.firstOrNull(), finished = steps.isEmpty())
@@ -41,9 +49,20 @@ class NavigationEngine(
     /** Emits once per step transition — the UI vibrates on this (no TTS yet). */
     val stepChanged: SharedFlow<Unit> = _stepChanged
 
+    private val _reminderFired = MutableSharedFlow<ReminderEvent>(extraBufferCapacity = 1)
+    /** Emits once when the configured get-off reminder threshold is crossed on a Ride step. */
+    val reminderFired: SharedFlow<ReminderEvent> = _reminderFired
+
     private var scheduleJob: Job? = null
     private var lastGpsPoint: GeoPoint? = null
     private var navScope: CoroutineScope? = null
+    private var lastMatchedStopIndex = -1
+    private var reminderFiredForStep = false
+
+    /** Pushed live from the in-screen reminder settings dialog. */
+    fun updateReminderSettings(settings: ReminderSettings) {
+        reminderSettings = settings
+    }
 
     fun start(scope: CoroutineScope) {
         navScope = scope
@@ -78,14 +97,38 @@ class NavigationEngine(
         moveTo(current.stepIndex - 1)
     }
 
+    /** Jumps straight to [index] — used by the step-overview screen's "tap to jump" action. */
+    fun jumpTo(index: Int) {
+        if (index < 0 || index >= steps.size) return
+        moveTo(index)
+    }
+
     private fun onGpsPoint(point: GeoPoint) {
         val current = _state.value
         val step = current.step ?: return
         val distance = haversineMeters(point, step.point)
-        _state.value = current.copy(distanceToTargetMeters = distance, usingGps = true)
+        _state.value = current.copy(distanceToTargetMeters = distance, usingGps = true, currentPosition = point)
+
+        if (step is NavigationStep.Ride && step.stops.isNotEmpty()) {
+            trackRideProgress(point, step)
+        }
 
         if (step.advanceMode() == AdvanceMode.GPS && distance <= thresholdFor(step)) {
             moveTo(current.stepIndex + 1)
+        }
+    }
+
+    /** Advances [lastMatchedStopIndex] as GPS passes each of [step]'s stops, and fires the get-off reminder once. */
+    private fun trackRideProgress(point: GeoPoint, step: NavigationStep.Ride) {
+        val nextIndex = lastMatchedStopIndex + 1
+        if (nextIndex < step.stops.size && haversineMeters(point, step.stops[nextIndex].point) <= RIDE_STOP_PROXIMITY_METERS) {
+            lastMatchedStopIndex = nextIndex
+        }
+        val remaining = (step.stops.size - 1 - lastMatchedStopIndex).coerceAtLeast(0)
+        _state.value = _state.value.copy(ridingStopsRemaining = remaining)
+        if (reminderSettings.enabled && !reminderFiredForStep && remaining == reminderSettings.stopsBefore) {
+            reminderFiredForStep = true
+            _reminderFired.tryEmit(ReminderEvent(remaining, step.alightStopName))
         }
     }
 
@@ -106,6 +149,8 @@ class NavigationEngine(
 
     private fun moveTo(index: Int) {
         scheduleJob?.cancel()
+        lastMatchedStopIndex = -1
+        reminderFiredForStep = false
         if (index >= steps.size) {
             _state.value = _state.value.copy(finished = true, step = null)
             return
@@ -113,7 +158,8 @@ class NavigationEngine(
         _state.value = NavState(
             stepIndex = index,
             step = steps[index],
-            usingGps = lastGpsPoint != null
+            usingGps = lastGpsPoint != null,
+            currentPosition = lastGpsPoint
         )
         _stepChanged.tryEmit(Unit)
         runScheduleForCurrentStep()
@@ -127,5 +173,10 @@ class NavigationEngine(
     /** Call the returned job's scope's cancellation (e.g. activity onDestroy) to stop tracking. */
     fun stop() {
         scheduleJob?.cancel()
+    }
+
+    private companion object {
+        /** Reuses [thresholdFor]'s non-walk GPS-proximity threshold for matching a ride stop. */
+        const val RIDE_STOP_PROXIMITY_METERS = 35.0
     }
 }

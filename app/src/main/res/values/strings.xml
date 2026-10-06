@@ -117,12 +117,8 @@
 
     <!-- Live navigation -->
     <string name="start_navigation">Start navigation</string>
-    <string name="nav_next_button">Next</string>
-    <string name="nav_back_button">Back</string>
     <string name="nav_confirm_board">I boarded, continue</string>
     <string name="nav_finished">You have arrived 🎉</string>
-    <string name="nav_mode_gps">Following your GPS location</string>
-    <string name="nav_mode_schedule">No GPS — following the schedule (grant location access, or turn on GPS, for live tracking)</string>
     <string name="nav_distance_meters">%1$d m away</string>
     <string name="nav_walk_instruction">%1$s · %2$d m</string>
     <string name="nav_board_instruction">Board %1$s at %2$s</string>
@@ -130,8 +126,39 @@
     <string name="nav_ride_instruction">Riding %1$s → get off at %2$s</string>
     <string name="nav_ride_instruction_timed">Riding %1$s → get off at %2$s (arrives %3$s)</string>
     <string name="nav_arrive_instruction">Arrive at %1$s</string>
-    <string name="nav_upcoming">Next: %1$s</string>
     <string name="nav_unavailable">Live navigation isn\'t available for this route.</string>
+
+    <!-- Live navigation — map-centric screen (header, reminder, pager, overview) -->
+    <string name="nav_header_title">LIVE Navigation</string>
+    <string name="nav_close_description">End navigation</string>
+    <string name="nav_close_confirm_title">End navigation?</string>
+    <string name="nav_close_confirm_message">This ends your live navigation session.</string>
+    <string name="nav_close_confirm_end">End</string>
+    <string name="nav_close_confirm_cancel">Cancel</string>
+    <string name="nav_chevron_description">Full trip overview</string>
+    <string name="nav_steps_overview_title">Trip overview</string>
+    <string name="nav_reminder_toggle_label">Get-off alerts</string>
+    <string name="nav_reminder_settings_description">Reminder settings</string>
+    <string name="nav_reminder_dialog_title">Get-off reminder</string>
+    <string name="nav_reminder_stops_before">Alert me %1$d stops before</string>
+    <string name="nav_reminder_alert_mode_label">Alert mode</string>
+    <string name="nav_reminder_mode_sound">Sound</string>
+    <string name="nav_reminder_mode_vibrate">Vibrate</string>
+    <string name="nav_reminder_mode_both">Both</string>
+    <string name="nav_reminder_volume">Volume</string>
+    <string name="nav_voice_nav_placeholder">Voice navigation (coming soon)</string>
+    <string name="nav_reminder_fired_message">In %1$d stops, get off at %2$s</string>
+    <string name="nav_stops_remaining_header">Remaining stops</string>
+    <string name="nav_depart_at">Depart at %1$s</string>
+    <string name="nav_pager_prev_description">Previous step</string>
+    <string name="nav_pager_next_description">Next step</string>
+    <string name="nav_resume_chip">Resume navigation</string>
+    <string name="nav_resume_chip_to">Resume navigation to %1$s</string>
+    <string name="nav_reminder_save">Save</string>
+    <string name="nav_card_label_walk">Walking</string>
+    <string name="nav_card_label_board">Board</string>
+    <string name="nav_card_label_alight">Get off</string>
+    <string name="nav_card_label_arrive">Arrival</string>
 
     <!-- Trip time picker -->
     <string name="trip_time_now">Now</string>

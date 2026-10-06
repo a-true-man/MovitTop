@@ -128,6 +128,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var zoomOutButton: MaterialButton
     private lateinit var myLocationButton: MaterialButton
     private lateinit var dataImportButton: MaterialButton
+    private lateinit var resumeNavigationChip: MaterialButton
     private lateinit var tripHistoryTitle: TextView
     private lateinit var tripHistoryRecycler: RecyclerView
     private lateinit var nearbyCategoryChips: ChipGroup
@@ -289,6 +290,13 @@ class MainActivity : AppCompatActivity() {
         zoomOutButton = findViewById(R.id.zoomOutButton)
         myLocationButton = findViewById(R.id.myLocationButton)
         dataImportButton = findViewById(R.id.dataImportButton)
+        resumeNavigationChip = findViewById(R.id.resumeNavigationChip)
+        resumeNavigationChip.setOnClickListener {
+            startActivity(
+                Intent(this, LiveNavigationActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            )
+        }
         zoomInButton.setOnClickListener { zoomBy(1) }
         zoomOutButton.setOnClickListener { zoomBy(-1) }
         myLocationButton.setOnClickListener { requestMyLocation() }
@@ -337,6 +345,28 @@ class MainActivity : AppCompatActivity() {
         // soon as the user comes back from DataImportActivity having picked
         // a package — no need to relaunch the app to see it disappear.
         checkOfflineDataAvailability()
+        refreshResumeChip()
+    }
+
+    /**
+     * Shows a "resume navigation" chip whenever a live-nav session is minimized
+     * (soft-exited via LiveNavigationActivity's system-Back handling, see
+     * PendingNavigation) rather than ended via its X/close button.
+     */
+    private fun refreshResumeChip() {
+        val hasActiveSession = PendingNavigation.activeEngine?.state?.value?.finished == false
+        resumeNavigationChip.visibility = if (hasActiveSession) View.VISIBLE else View.GONE
+        if (hasActiveSession) {
+            val destination = PendingNavigation.activeDestinationLabel?.takeIf { it.isNotBlank() }
+            resumeNavigationChip.text = if (destination != null) {
+                getString(R.string.nav_resume_chip_to, destination)
+            } else {
+                getString(R.string.nav_resume_chip)
+            }
+            resumeNavigationChip.nextFocusUpId = R.id.searchButton
+            resumeNavigationChip.nextFocusDownId = R.id.zoomInButton
+            zoomInButton.nextFocusUpId = R.id.resumeNavigationChip
+        }
     }
 
     /**
@@ -838,7 +868,11 @@ class MainActivity : AppCompatActivity() {
             return
         }
         PendingNavigation.steps = steps
-        startActivity(Intent(this, LiveNavigationActivity::class.java))
+        PendingNavigation.activeDestinationLabel = viewModel.uiState.value.destinationQuery
+        startActivity(
+            Intent(this, LiveNavigationActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        )
     }
 
     private fun performSearch() {
@@ -1233,6 +1267,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateFocusChain() {
+        refreshResumeChip()
         if (homeContainer.visibility == View.VISIBLE) {
             // The origin/destination/time/search chain, trip-history row, and
             // category chips are all wired via static nextFocus ids in the
@@ -1262,7 +1297,8 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         } else {
-            searchButton.nextFocusDownId = R.id.zoomInButton
+            searchButton.nextFocusDownId =
+                if (resumeNavigationChip.visibility == View.VISIBLE) R.id.resumeNavigationChip else R.id.zoomInButton
         }
     }
 

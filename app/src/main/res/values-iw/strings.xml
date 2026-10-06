@@ -111,12 +111,8 @@
 
     <!-- Live navigation (Hebrew) -->
     <string name="start_navigation">התחל ניווט</string>
-    <string name="nav_next_button">הבא</string>
-    <string name="nav_back_button">חזור</string>
     <string name="nav_confirm_board">עליתי, המשך</string>
     <string name="nav_finished">הגעת ליעד 🎉</string>
-    <string name="nav_mode_gps">עוקב אחרי המיקום שלך ב-GPS</string>
-    <string name="nav_mode_schedule">אין GPS — מתקדם לפי לוח הזמנים המשוער (אפשר להפעיל מיקום/GPS למעקב חי)</string>
     <string name="nav_distance_meters">%1$d מ׳ מכאן</string>
     <string name="nav_walk_instruction">%1$s · %2$d מ׳</string>
     <string name="nav_board_instruction">עלה על %1$s בתחנה %2$s</string>
@@ -124,8 +120,39 @@
     <string name="nav_ride_instruction">נוסע ב-%1$s ← רד בתחנה %2$s</string>
     <string name="nav_ride_instruction_timed">נוסע ב-%1$s ← רד בתחנה %2$s (מגיע ב-%3$s)</string>
     <string name="nav_arrive_instruction">הגעה ל-%1$s</string>
-    <string name="nav_upcoming">הבא בתור: %1$s</string>
     <string name="nav_unavailable">ניווט חי אינו זמין עבור מסלול זה.</string>
+
+    <!-- Live navigation — map-centric screen (Hebrew) -->
+    <string name="nav_header_title">ניווט LIVE</string>
+    <string name="nav_close_description">סיים ניווט</string>
+    <string name="nav_close_confirm_title">לסיים את הניווט?</string>
+    <string name="nav_close_confirm_message">פעולה זו תסיים את הניווט החי הנוכחי.</string>
+    <string name="nav_close_confirm_end">סיים</string>
+    <string name="nav_close_confirm_cancel">ביטול</string>
+    <string name="nav_chevron_description">סקירת כל המסלול</string>
+    <string name="nav_steps_overview_title">סקירת המסלול</string>
+    <string name="nav_reminder_toggle_label">התראות ירידה</string>
+    <string name="nav_reminder_settings_description">הגדרות תזכורת</string>
+    <string name="nav_reminder_dialog_title">תזכורת ירידה</string>
+    <string name="nav_reminder_stops_before">התראה %1$d תחנות לפני</string>
+    <string name="nav_reminder_alert_mode_label">אופן ההתראה</string>
+    <string name="nav_reminder_mode_sound">צליל</string>
+    <string name="nav_reminder_mode_vibrate">רטט</string>
+    <string name="nav_reminder_mode_both">גם וגם</string>
+    <string name="nav_reminder_volume">עוצמת צליל</string>
+    <string name="nav_voice_nav_placeholder">ניווט קולי (בקרוב)</string>
+    <string name="nav_reminder_fired_message">בעוד %1$d תחנות, רד ב-%2$s</string>
+    <string name="nav_stops_remaining_header">תחנות שנותרו</string>
+    <string name="nav_depart_at">צא לדרך בשעה %1$s</string>
+    <string name="nav_pager_prev_description">שלב קודם</string>
+    <string name="nav_pager_next_description">שלב הבא</string>
+    <string name="nav_resume_chip">חזרה לניווט</string>
+    <string name="nav_resume_chip_to">חזרה לניווט אל %1$s</string>
+    <string name="nav_reminder_save">שמור</string>
+    <string name="nav_card_label_walk">הליכה</string>
+    <string name="nav_card_label_board">עלייה</string>
+    <string name="nav_card_label_alight">ירידה</string>
+    <string name="nav_card_label_arrive">הגעה</string>
 
     <!-- Trip time picker (Hebrew) -->
     <string name="trip_time_now">עכשיו</string>

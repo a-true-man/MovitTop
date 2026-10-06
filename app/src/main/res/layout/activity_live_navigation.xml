@@ -1,82 +1,301 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Map-centric live-navigation screen: the map shows only the CURRENT step's
+     route (see LiveNavMapController), with chrome overlaid on top — same
+     map-behind/chrome-overlay structure as activity_main.xml. -->
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/navRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/movitop_primary"
-    android:orientation="vertical"
-    android:paddingHorizontal="16dp"
-    android:paddingVertical="16dp"
     tools:context=".LiveNavigationActivity">
 
-    <TextView
-        android:id="@+id/navModeText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:alpha="0.85"
-        android:textColor="@color/movitop_on_primary"
-        android:textSize="11sp"
-        tools:text="עוקב אחרי המיקום שלך ב-GPS" />
-
-    <TextView
-        android:id="@+id/navInstructionText"
+    <org.mapsforge.map.android.view.MapView
+        android:id="@+id/navMapView"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:textColor="@color/movitop_on_primary"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        tools:text="פנה שמאלה אל רחוב הרצל · 300 מ׳" />
+        android:layout_height="match_parent"
+        android:focusable="true" />
 
-    <TextView
-        android:id="@+id/navDistanceText"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/navContentRoot"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="@color/movitop_on_primary"
-        android:textSize="14sp"
-        tools:text="120 מ׳ מכאן" />
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent">
 
-    <TextView
-        android:id="@+id/navUpcomingText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:alpha="0.85"
-        android:textColor="@color/movitop_on_primary"
-        android:textSize="12sp"
-        tools:text="הבא בתור: הגעה ליעד" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:orientation="horizontal">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/navBackButton"
+        <!-- Header: close (ends navigation) | title + ETA | chevron (full step overview) -->
+        <LinearLayout
+            android:id="@+id/navHeader"
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_marginEnd="8dp"
-            android:layout_weight="1"
-            android:text="@string/nav_back_button"
-            android:textColor="@color/movitop_on_primary"
-            app:backgroundTint="@color/movitop_primary_dark"
-            app:cornerRadius="14dp" />
+            android:layout_height="wrap_content"
+            android:background="@color/movitop_primary"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/navNextButton"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/navCloseButton"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/nav_close_description"
+                app:icon="@drawable/ic_nav_close"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconTint="@color/movitop_on_primary" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/navTitleText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/nav_header_title"
+                    android:textColor="@color/movitop_on_primary"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/navEtaText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/movitop_on_primary"
+                    android:textSize="11sp"
+                    android:alpha="0.9"
+                    tools:text="13:15 · עוד 11 דק׳" />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/navChevronButton"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/nav_chevron_description"
+                app:icon="@drawable/ic_nav_chevron"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconTint="@color/movitop_on_primary" />
+
+        </LinearLayout>
+
+        <!-- Current instruction: black bar, accent text — hidden during Ride steps (the stops list owns that space instead). -->
+        <LinearLayout
+            android:id="@+id/navInstructionBar"
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="2"
-            android:text="@string/nav_next_button"
-            android:textColor="@color/movitop_text_primary"
-            app:backgroundTint="@color/movitop_surface"
-            app:cornerRadius="14dp" />
+            android:layout_height="wrap_content"
+            android:background="@color/black"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/navHeader">
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/navInstructionText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@color/movitop_accent"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="המשך לכיוון המסלול המסומן" />
 
-</LinearLayout>
+            <TextView
+                android:id="@+id/navDistanceText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:alpha="0.85"
+                tools:text="120 מ׳ מכאן" />
+
+        </LinearLayout>
+
+        <!-- Floating pill: get-off reminder toggle + its settings gear. -->
+        <LinearLayout
+            android:id="@+id/navReminderRow"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="14dp"
+            android:background="@drawable/bg_nav_pill"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingEnd="4dp"
+            android:paddingVertical="4dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/navInstructionBar">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginEnd="8dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_nav_bell" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="@string/nav_reminder_toggle_label"
+                android:textColor="@color/white"
+                android:textSize="12sp" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/navReminderToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/navReminderSettingsButton"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="2dp"
+                android:contentDescription="@string/nav_reminder_settings_description"
+                app:icon="@drawable/ic_nav_settings"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconTint="@color/movitop_on_primary" />
+
+        </LinearLayout>
+
+        <!-- Bottom card: swaps between a single instruction summary and the remaining-stops list. -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/navBottomCard"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginBottom="10dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="6dp"
+            app:layout_constraintBottom_toTopOf="@id/navPagerRow"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:id="@+id/navInstructionCardContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="12dp">
+
+                    <TextView
+                        android:id="@+id/navCardLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/movitop_text_secondary"
+                        android:textSize="11sp"
+                        tools:text="נק׳ התחלה" />
+
+                    <TextView
+                        android:id="@+id/navCardTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/movitop_text_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        tools:text="ככר רבין" />
+
+                    <TextView
+                        android:id="@+id/navCardTime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="@color/movitop_text_secondary"
+                        android:textSize="13sp"
+                        tools:text="צא לדרך בשעה 11:03" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/navStopsRemainingHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:paddingHorizontal="16dp"
+                    android:text="@string/nav_stops_remaining_header"
+                    android:textColor="@color/movitop_text_secondary"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/navStopsRecycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp"
+                    android:clipToPadding="false"
+                    android:paddingHorizontal="12dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Pager: explicit prev/next (no swipe — D-Pad-safe) + one dot per step. -->
+        <LinearLayout
+            android:id="@+id/navPagerRow"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:background="@color/movitop_surface"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="6dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/navPrevButton"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:contentDescription="@string/nav_pager_prev_description"
+                app:backgroundTint="@color/movitop_primary"
+                app:icon="@drawable/ic_nav_pager_prev"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconTint="@color/movitop_on_primary" />
+
+            <LinearLayout
+                android:id="@+id/navDotsContainer"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="horizontal" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/navNextButton"
+                style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:contentDescription="@string/nav_pager_next_description"
+                app:backgroundTint="@color/movitop_primary"
+                app:icon="@drawable/ic_nav_pager_next"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconTint="@color/movitop_on_primary" />
+
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

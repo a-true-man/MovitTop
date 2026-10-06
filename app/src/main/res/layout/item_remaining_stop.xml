@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One stop in the live-nav "remaining stops" list. Focusable for D-Pad navigation, informational only (no click action), same as item_route_step.xml's rows. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="?android:attr/selectableItemBackground"
+    android:focusable="true"
+    android:focusableInTouchMode="false"
+    android:minHeight="44dp"
+    android:paddingVertical="6dp">
+
+    <TextView
+        android:id="@+id/remainingStopName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textSize="14sp"
+        android:textColor="@color/movitop_text_primary"
+        tools:text="ככר ציון" />
+
+    <TextView
+        android:id="@+id/remainingStopTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textColor="@color/movitop_text_secondary"
+        android:textSize="13sp"
+        tools:text="13:05" />
+
+</LinearLayout>

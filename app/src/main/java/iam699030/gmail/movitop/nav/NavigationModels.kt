@@ -8,6 +8,13 @@ import iam699030.gmail.movitop.data.GeoPoint
  * duration, so navigation still progresses on devices with no/disabled GPS —
  * see [NavigationEngine].
  */
+/** One stop on a [NavigationStep.Ride] leg — every intermediate stop plus the final alight stop, in order. */
+data class RideStop(
+    val name: String,
+    val point: GeoPoint,
+    val arriveTimeText: String? = null
+)
+
 sealed interface NavigationStep {
     val point: GeoPoint
     val estimatedSeconds: Long
@@ -17,7 +24,9 @@ sealed interface NavigationStep {
         val instruction: String,
         val distanceMeters: Double,
         override val point: GeoPoint,
-        override val estimatedSeconds: Long
+        override val estimatedSeconds: Long,
+        /** The full decoded path of this leg, for drawing it on the live-nav map. */
+        val legPoints: List<GeoPoint> = emptyList()
     ) : NavigationStep
 
     /** Requires the user to confirm boarding — we have no live vehicle data to detect it. */
@@ -39,7 +48,11 @@ sealed interface NavigationStep {
         override val point: GeoPoint,
         override val estimatedSeconds: Long,
         val arriveTimeText: String? = null,
-        val colorArgb: Int = 0
+        val colorArgb: Int = 0,
+        /** The full decoded path of this leg, for drawing it on the live-nav map. */
+        val legPoints: List<GeoPoint> = emptyList(),
+        /** Every intermediate stop plus the final alight stop, in ride order. */
+        val stops: List<RideStop> = emptyList()
     ) : NavigationStep
 
     data class Alight(
@@ -51,7 +64,8 @@ sealed interface NavigationStep {
 
     data class Arrive(
         val placeName: String,
-        override val point: GeoPoint
+        override val point: GeoPoint,
+        val arriveTimeText: String? = null
     ) : NavigationStep {
         override val estimatedSeconds: Long = 0L
     }

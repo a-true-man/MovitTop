@@ -14,6 +14,7 @@ import iam699030.gmail.movitop.data.api.PolylineDecoder
 import iam699030.gmail.movitop.data.api.StepDto
 import iam699030.gmail.movitop.data.api.StopTimeDto
 import iam699030.gmail.movitop.nav.NavigationStep
+import iam699030.gmail.movitop.nav.RideStop
 import iam699030.gmail.movitop.nav.haversineMeters
 import iam699030.gmail.movitop.nav.pointAtFraction
 import kotlinx.coroutines.CancellationException
@@ -382,7 +383,8 @@ class RealMotisRepository(
                         instruction = getString(R.string.nav_walk_continue_to, to?.name.orEmpty()),
                         distanceMeters = leg.distance ?: 0.0,
                         point = toPoint,
-                        estimatedSeconds = leg.duration ?: walkSeconds(leg.distance ?: 0.0)
+                        estimatedSeconds = leg.duration ?: walkSeconds(leg.distance ?: 0.0),
+                        legPoints = legPolyline
                     )
                 } else {
                     val totalDistance = legSteps.sumOf { it.distance ?: 0.0 }.takeIf { it > 0 }
@@ -395,7 +397,8 @@ class RealMotisRepository(
                             instruction = stepInstructionText(step),
                             distanceMeters = stepDistance,
                             point = pointAtFraction(legPolyline, cumulative / totalDistance),
-                            estimatedSeconds = walkSeconds(stepDistance)
+                            estimatedSeconds = walkSeconds(stepDistance),
+                            legPoints = legPolyline
                         )
                     }
                 }
@@ -411,19 +414,38 @@ class RealMotisRepository(
                     departTimeText = IsoTime.toClockText(leg.startTime),
                     colorArgb = color
                 )
+                val remainingStops = leg.intermediateStops.orEmpty().mapNotNull { place ->
+                    val lat = place.lat ?: return@mapNotNull null
+                    val lon = place.lon ?: return@mapNotNull null
+                    RideStop(
+                        name = place.name.orEmpty(),
+                        point = GeoPoint(lat, lon),
+                        arriveTimeText = IsoTime.toClockText(place.arrival ?: place.departure)
+                    )
+                } + RideStop(
+                    name = to?.name.orEmpty(),
+                    point = toPoint,
+                    arriveTimeText = IsoTime.toClockText(leg.endTime)
+                )
                 navSteps += NavigationStep.Ride(
                     routeLabel = routeLabel,
                     alightStopName = to?.name ?: "",
                     point = toPoint,
                     estimatedSeconds = leg.duration ?: 0L,
                     arriveTimeText = IsoTime.toClockText(leg.endTime),
-                    colorArgb = color
+                    colorArgb = color,
+                    legPoints = legPolyline,
+                    stops = remainingStops
                 )
             }
         }
 
         legs.lastOrNull()?.to?.let { last ->
-            navSteps += NavigationStep.Arrive(destName, GeoPoint(last.lat ?: 0.0, last.lon ?: 0.0))
+            navSteps += NavigationStep.Arrive(
+                placeName = destName,
+                point = GeoPoint(last.lat ?: 0.0, last.lon ?: 0.0),
+                arriveTimeText = IsoTime.toClockText(legs.lastOrNull()?.endTime)
+            )
         }
         return navSteps
     }

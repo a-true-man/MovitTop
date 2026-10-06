@@ -47,7 +47,8 @@ data class LegDto(
     val startTime: String? = null, // ISO-8601, leg departure time
     val endTime: String? = null, // ISO-8601, leg arrival time
     val routeColor: String? = null, // hex, no '#', e.g. "2D6CDF" — from GTFS routes.txt
-    val routeTextColor: String? = null
+    val routeTextColor: String? = null,
+    val intermediateStops: List<PlaceDto>? = null // transit legs only — stops between `from` and `to`
 )
 
 data class PlaceDto(

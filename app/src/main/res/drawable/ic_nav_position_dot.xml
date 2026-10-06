@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "You are here" marker on the live-nav map: a filled brand-colored dot with a white ring. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="22dp"
+    android:height="22dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/white"
+        android:pathData="M12,2c-5.52,0 -10,4.48 -10,10s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2z" />
+    <path
+        android:fillColor="@color/movitop_primary"
+        android:pathData="M12,5c-3.87,0 -7,3.13 -7,7s3.13,7 7,7 7,-3.13 7,-7S15.87,5 12,5z" />
+</vector>

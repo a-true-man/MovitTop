@@ -98,6 +98,27 @@
 
         </LinearLayout>
 
+        <!-- Shown only while a live-nav session is minimized (soft-exited, not ended) — see PendingNavigation. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/resumeNavigationChip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/nav_resume_chip"
+            android:textSize="13sp"
+            android:visibility="gone"
+            app:cornerRadius="20dp"
+            app:icon="@drawable/ic_nav_bell"
+            app:iconGravity="textStart"
+            app:iconSize="16dp"
+            app:iconTint="@color/movitop_on_primary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="visible" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <include layout="@layout/layout_bottom_sheet_results" />
