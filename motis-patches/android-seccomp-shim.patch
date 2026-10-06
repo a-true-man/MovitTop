@@ -1,9 +1,9 @@
 diff --git a/exe/android_seccomp_shim.h b/exe/android_seccomp_shim.h
 new file mode 100644
-index 0000000..dcc1a9b
+index 0000000..0790666
 --- /dev/null
 +++ b/exe/android_seccomp_shim.h
-@@ -0,0 +1,88 @@
+@@ -0,0 +1,120 @@
 +#pragma once
 +
 +// Movitop patch: Android's seccomp-bpf filter for regular (untrusted_app)
@@ -26,11 +26,25 @@ index 0000000..dcc1a9b
 +// Termux/Android with SIGSYS. Android's neverallow/seccomp policy has always
 +// been this way for untrusted_app; it's the newer syscalls glibc/musl/boost
 +// started preferring that made it start showing up.
++//
++// accept(2) is a different, worse case of the same symptom, discovered
++// 2026-10-06 testing on a real arm64 device (not just `adb shell` or an
++// emulator): Android's policy allows accept4(2) — the only form Bionic
++// itself ever calls — but not bare accept(2), which is what net::web_server
++// issues directly. Unlike the syscalls above, there's no libc-level
++// ENOSYS fallback for a raw accept(2) call from application code, so
++// faking -ENOSYS here doesn't let it continue gracefully — it just makes
++// the HTTP server's accept loop spin forever ("main accept: Function not
++// implemented", logged at the same microsecond hundreds of times) without
++// ever accepting a single real connection, which looks like the whole
++// engine being "stuck" rather than crashed. So accept(2) gets emulated for
++// real (via a genuine accept4(2) syscall) instead of faked.
 +
 +#include <cerrno>
 +#include <csignal>
 +#include <cstdio>
 +#include <cstring>
++#include <sys/syscall.h>
 +#include <ucontext.h>
 +#include <unistd.h>
 +
@@ -62,13 +76,31 @@ index 0000000..dcc1a9b
 +  auto* ctx = static_cast<ucontext_t*>(ucontext_voidp);
 +
 +#if defined(__x86_64__)
-+  auto const nr = ctx->uc_mcontext.gregs[REG_RAX];
++  auto& gregs = ctx->uc_mcontext.gregs;
++  auto const nr = gregs[REG_RAX];
++  if (nr == SYS_accept) {
++    long const result = ::syscall(SYS_accept4, static_cast<long>(gregs[REG_RDI]),
++                                   reinterpret_cast<void*>(gregs[REG_RSI]),
++                                   reinterpret_cast<void*>(gregs[REG_RDX]), 0L);
++    log_line("[android-seccomp-shim] emulated accept() via accept4(), result=", result);
++    gregs[REG_RAX] = (result == -1) ? -errno : result;
++    return;
++  }
 +  log_line("[android-seccomp-shim] faked ENOSYS for syscall ", nr);
-+  ctx->uc_mcontext.gregs[REG_RAX] = -ENOSYS;
++  gregs[REG_RAX] = -ENOSYS;
 +#elif defined(__aarch64__)
-+  auto const nr = static_cast<long>(ctx->uc_mcontext.regs[8]);
++  auto& regs = ctx->uc_mcontext.regs;
++  auto const nr = static_cast<long>(regs[8]);
++  if (nr == SYS_accept) {
++    long const result = ::syscall(SYS_accept4, static_cast<long>(regs[0]),
++                                   reinterpret_cast<void*>(regs[1]),
++                                   reinterpret_cast<void*>(regs[2]), 0L);
++    log_line("[android-seccomp-shim] emulated accept() via accept4(), result=", result);
++    regs[0] = static_cast<unsigned long>(result == -1 ? -errno : result);
++    return;
++  }
 +  log_line("[android-seccomp-shim] faked ENOSYS for syscall ", nr);
-+  ctx->uc_mcontext.regs[0] = static_cast<unsigned long>(-ENOSYS);
++  regs[0] = static_cast<unsigned long>(-ENOSYS);
 +#else
 +  // Unknown arch: nothing we can safely fake — fall back to default (crash).
 +  std::signal(SIGSYS, SIG_DFL);
@@ -92,24 +124,3 @@ index 0000000..dcc1a9b
 +__attribute__((constructor(101))) inline void install_early() { install(); }
 +
 +}  // namespace motis_android_compat
-diff --git a/exe/main.cc b/exe/main.cc
-index 8f15e32..64af18a 100644
---- a/exe/main.cc
-+++ b/exe/main.cc
-@@ -21,6 +21,7 @@
- #include "motis/logging.h"
- #include "motis/server.h"
- 
-+#include "./android_seccomp_shim.h"
- #include "./flags.h"
- 
- #if defined(USE_MIMALLOC) && defined(_WIN32)
-@@ -46,6 +47,8 @@ int params(int, char**);
- using namespace motis;
- 
- int main(int ac, char** av) {
-+  motis_android_compat::install();
-+
-   auto const motis_version = std::string_view{MOTIS_VERSION};
-   if (ac > 1 && av[1] == "--help"sv) {
-     fmt::println(
