@@ -9,9 +9,12 @@
 #
 # Runs every Saturday at 19:00 Israel time. GitHub Actions cron is UTC-only
 # and does not shift for Israel's DST, so two crons are scheduled (one for
-# each UTC offset Israel uses across the year) and the job itself checks
-# the current Israel wall-clock hour and skips unless it's really 19:00 —
-# so exactly one of the two firings actually runs, year-round.
+# each UTC offset Israel uses across the year) and the job checks which of
+# the two cron expressions actually fired (github.event.schedule) against
+# the UTC offset Israel currently observes, so exactly one of the two
+# firings runs, year-round — regardless of how late GitHub Actions
+# actually dispatches the scheduled run (checking the wall-clock hour
+# instead broke when a delayed dispatch landed outside the 19:00 hour).
 
 name: Weekly transit data refresh
 
@@ -33,9 +36,13 @@ jobs:
         id: check
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            HOUR="$(TZ=Asia/Jerusalem date +%H)"
-            if [ "${HOUR}" != "19" ]; then
-              echo "Local Israel hour is ${HOUR}, not 19 — this is the inactive DST cron slot. Skipping."
+            OFFSET="$(TZ=Asia/Jerusalem date +%z)"
+            SCHEDULE="${{ github.event.schedule }}"
+            if [ "${SCHEDULE}" = "0 16 * * 6" ] && [ "${OFFSET}" != "+0300" ]; then
+              echo "Israel is at ${OFFSET}, not IDT (+0300) — this is the inactive DST cron slot. Skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            elif [ "${SCHEDULE}" = "0 17 * * 6" ] && [ "${OFFSET}" != "+0200" ]; then
+              echo "Israel is at ${OFFSET}, not IST (+0200) — this is the inactive DST cron slot. Skipping."
               echo "skip=true" >> "$GITHUB_OUTPUT"
             fi
           fi
