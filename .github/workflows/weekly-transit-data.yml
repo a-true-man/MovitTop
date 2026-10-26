@@ -83,6 +83,22 @@ jobs:
               https://download.geofabrik.de/asia/israel-and-palestine-latest.osm.pbf
           fi
 
+      - name: Cache Mapsforge offline map (rarely changes; the Android app's MapView tiles)
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: movitop_data/israel.map
+          key: mapsforge-map-v1
+
+      - name: Fetch Mapsforge offline map (only if not restored from cache)
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          if [ ! -f movitop_data/israel.map ]; then
+            curl -fL --retry 5 --retry-delay 5 \
+              -o movitop_data/israel.map \
+              https://download.mapsforge.org/maps/v5/asia/israel-and-palestine.map
+          fi
+
       - name: Optimize GTFS
         if: steps.check.outputs.skip != 'true'
         run: python3 optimize_gtfs.py --data-dir movitop_data
