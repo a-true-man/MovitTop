@@ -30,35 +30,35 @@ MovitTop היא אפליקציית Android למציאת מסלולים בתחב�
 <table>
 <tr>
 <td align="center" width="33%">
-<img src="docs/screenshots/02_home_map_search.png" width="220" alt="מסך הבית"/><br/>
-<b>מסך הבית</b><br/>מפה אופליין + טופס חיפוש מוצא/יעד
+<img src="docs/screenshots/01_home_map.png" width="220" alt="מסך הבית"/><br/>
+<b>מסך הבית</b><br/>מפת תחבורה ציבורית אופליין ברמה ארצית
 </td>
 <td align="center" width="33%">
-<img src="docs/screenshots/03_place_picker.png" width="220" alt="בחירת מקום"/><br/>
-<b>בחירת מקום</b><br/>מיקום נוכחי, "בית"/"עבודה", מקומות אחרונים
+<img src="docs/screenshots/02_search_form.png" width="220" alt="חיפוש מוצא ויעד"/><br/>
+<b>חיפוש מוצא ויעד</b><br/>טופס חיפוש מסלול + תחנות ונקודות עניין קרובות על המפה
 </td>
 <td align="center" width="33%">
-<img src="docs/screenshots/04_route_results.png" width="220" alt="תוצאות מסלול"/><br/>
-<b>תוצאות מסלול</b><br/>תחבורה ציבורית, מונית ודרייבר יחד — עם מחיר משוער וזמן הגעה
+<img src="docs/screenshots/03_poi_map.png" width="220" alt="נקודות עניין על המפה"/><br/>
+<b>נקודות עניין מ-OSM</b><br/>אלפי תחנות ושירותים מיובאים ומוצגים ישירות על המפה
 </td>
 </tr>
 <tr>
 <td align="center" width="33%">
-<img src="docs/screenshots/05_taxi_call.png" width="220" alt="הזמנת מונית"/><br/>
-<b>הזמנת מונית/דרייבר</b><br/>רשימת תחנות מוניות/הסעות קרובות עם חיוג ישיר
+<img src="docs/screenshots/04_route_results.png" width="220" alt="תוצאות מסלול"/><br/>
+<b>תוצאות מסלול</b><br/>תחבורה ציבורית, אופניים, מונית ודרייבר יחד — עם מחיר משוער וזמן הגעה
 </td>
 <td align="center" width="33%">
-<img src="docs/screenshots/06_line_times.png" width="220" alt="זמני קווים"/><br/>
-<b>זמני קווים</b><br/>חיפוש קו, שמירת קווים מועדפים, לוחות זמנים אופליין
+<img src="docs/screenshots/05_route_steps.png" width="220" alt="פירוט מסלול"/><br/>
+<b>פירוט מסלול שלב־אחר־שלב</b><br/>הליכה, מעברים בין קווים, זמני הגעה ויציאה לכל שלב
 </td>
 <td align="center" width="33%">
-<img src="docs/screenshots/07_settings.png" width="220" alt="הגדרות"/><br/>
-<b>הגדרות</b><br/>מעבר מלא בין עברית (RTL) לאנגלית
+<img src="docs/screenshots/06_live_nav.png" width="220" alt="ניווט חי"/><br/>
+<b>ניווט חי</b><br/>מעקב מסלול בזמן אמת עם התראת ירידה בתחנה
 </td>
 </tr>
 </table>
 
-*כל הצילומים לקוחים מהאפליקציה בפועל, רצה על אמולטור Android.*
+*כל הצילומים לקוחים מהאפליקציה בפועל, רצה על מכשיר Android פיזי.*
 
 ---
 
