@@ -129,10 +129,16 @@ class RouteAdapter(
             val chip = inflater.inflate(R.layout.item_line_badge_chip, row, false)
             val icon = chip.findViewById<ImageView>(R.id.badgeIcon)
             val label = chip.findViewById<TextView>(R.id.badgeLabel)
+            // The pill itself carries the leg's color (transit-signage style);
+            // text/icon flip to whichever of near-black/white reads against
+            // it, instead of drawing that same color as foreground content —
+            // see LegColors.contentColorFor for why.
+            val contentColor = LegColors.contentColorFor(badge.colorArgb)
             label.text = badge.label
-            label.setTextColor(badge.colorArgb)
-            icon.setColorFilter(badge.colorArgb)
-            (chip.background.mutate() as? GradientDrawable)?.setStroke(dp(row, 1.5f), badge.colorArgb)
+            label.setTextColor(contentColor)
+            icon.setImageResource(if (badge.isWalk) R.drawable.ic_mode_walk else R.drawable.ic_mode_transit)
+            icon.setColorFilter(contentColor)
+            (chip.background.mutate() as? GradientDrawable)?.setColor(badge.colorArgb)
             row.addView(chip)
         }
     }

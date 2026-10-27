@@ -56,6 +56,10 @@ data class PlaceDto(
     val lat: Double? = null,
     val lon: Double? = null,
     val stopId: String? = null,
+    // The GTFS stop_code — in the Israeli MOT feed this is the physical
+    // station number printed on the bus-stop sign, distinct from stopId
+    // (MOTIS's internal, dataset-tag-prefixed id, e.g. "il_13708").
+    val stopCode: String? = null,
     val arrival: String? = null, // ISO-8601, only set on /stoptimes results
     val departure: String? = null, // ISO-8601, only set on /stoptimes results
     val modes: List<String>? = null // only set on /map/stops results

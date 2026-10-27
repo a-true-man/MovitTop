@@ -26,6 +26,7 @@ import com.google.android.material.snackbar.Snackbar
 import iam699030.gmail.movitop.R
 import iam699030.gmail.movitop.SimpleTextWatcher
 import iam699030.gmail.movitop.data.GeocodePlace
+import iam699030.gmail.movitop.data.ManualLocationRepository
 import iam699030.gmail.movitop.data.PinnedSlot
 import iam699030.gmail.movitop.nav.LocationTracker
 import kotlinx.coroutines.flow.firstOrNull
@@ -69,10 +70,10 @@ class SearchLocationActivity : AppCompatActivity() {
 
         val toolbar = findViewById<MaterialToolbar>(R.id.searchToolbar)
         val fieldType = intent.getStringExtra(EXTRA_FIELD_TYPE) ?: FIELD_ORIGIN
-        toolbar.title = if (fieldType == FIELD_DESTINATION) {
-            getString(R.string.search_destination_title)
-        } else {
-            getString(R.string.search_origin_title)
+        toolbar.title = when (fieldType) {
+            FIELD_DESTINATION -> getString(R.string.search_destination_title)
+            FIELD_MANUAL_LOCATION -> getString(R.string.search_manual_location_title)
+            else -> getString(R.string.search_origin_title)
         }
         toolbar.setNavigationOnClickListener { finish() }
 
@@ -280,27 +281,37 @@ class SearchLocationActivity : AppCompatActivity() {
         }
     }
 
-    /** GPS fix only (see [LocationTracker]) — the pick is returned as-is, with no reverse-geocoded name. */
+    /**
+     * Races GPS against network location (see [LocationTracker]) — the pick is returned as-is,
+     * with no reverse-geocoded name. If no fix arrives in time, falls back to the address set in
+     * Settings (see [ManualLocationRepository]), if any.
+     */
     private fun locateCurrentPosition() {
         currentLocationProgress.visibility = View.VISIBLE
         lifecycleScope.launch {
             val point = withTimeoutOrNull(LocationTracker.ONE_SHOT_FIX_TIMEOUT_MS) {
-                LocationTracker(this@SearchLocationActivity).updates().firstOrNull()
+                LocationTracker(this@SearchLocationActivity).updates(includeNetwork = true).firstOrNull()
             }
             currentLocationProgress.visibility = View.GONE
-            if (point == null) {
+            if (point != null) {
+                returnPlace(
+                    GeocodePlace(
+                        name = getString(R.string.search_use_current_location),
+                        subtitle = null,
+                        lat = point.lat,
+                        lon = point.lon,
+                        id = SearchLocationViewModel.CURRENT_LOCATION_ID
+                    )
+                )
+                return@launch
+            }
+            val manual = ManualLocationRepository(this@SearchLocationActivity).get()
+            if (manual == null) {
                 showLocationUnavailable()
                 return@launch
             }
-            returnPlace(
-                GeocodePlace(
-                    name = getString(R.string.search_use_current_location),
-                    subtitle = null,
-                    lat = point.lat,
-                    lon = point.lon,
-                    id = SearchLocationViewModel.CURRENT_LOCATION_ID
-                )
-            )
+            Snackbar.make(currentLocationRow, R.string.location_using_manual_fallback, Snackbar.LENGTH_SHORT).show()
+            returnPlace(manual)
         }
     }
 
@@ -345,6 +356,7 @@ class SearchLocationActivity : AppCompatActivity() {
 
         const val FIELD_ORIGIN = "origin"
         const val FIELD_DESTINATION = "destination"
+        const val FIELD_MANUAL_LOCATION = "manual_location"
 
         /** D-Pad-held-key repeats needed before a pinned row treats it as a long-press. */
         private const val LONG_PRESS_REPEAT_COUNT = 3

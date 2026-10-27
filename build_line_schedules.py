@@ -123,12 +123,19 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
 
         print("Reading stops.txt ...")
         stops = pd.read_csv(
-            z.open("stops.txt"), usecols=["stop_id", "stop_name", "stop_lat", "stop_lon"], dtype=str
+            z.open("stops.txt"),
+            usecols=["stop_id", "stop_name", "stop_code", "stop_lat", "stop_lon"],
+            dtype=str,
         )
         stops["stop_id"] = stops["stop_id"].astype(int)
         stops["stop_lat"] = stops["stop_lat"].astype(float)
         stops["stop_lon"] = stops["stop_lon"].astype(float)
         stop_names = stops.set_index("stop_id")["stop_name"].to_dict()
+        # pandas keeps a missing cell as a float NaN even under dtype=str —
+        # swap those for a real None so the DB column ends up NULL, not the
+        # string "nan". Not every stop has a stop_code in the feed.
+        stop_code_col = stops.set_index("stop_id")["stop_code"]
+        stop_codes = stop_code_col.astype(object).where(stop_code_col.notna(), None).to_dict()
         # Same physical terminal is often split across several stop_ids in
         # this feed (a boarding platform vs. a drop-off stop_id, ~50-100m
         # apart) — pairing a line's two directions below matches by distance
@@ -147,10 +154,18 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
         # the single stop_times.txt pass below can insert with the right FK
         # without waiting for the departures rows themselves to be built.
         trip_id_to_row_id = {tid: i for i, tid in enumerate(trips["trip_id"])}
+        trip_id_to_route_id = dict(zip(trips["trip_id"], trips["route_id"]))
 
         print("Scanning stop_times.txt: inserting every stop + finding each trip's first/last stop (chunked, ~1GB) ...")
         first_stop: dict[str, tuple[int, str, int]] = {}  # trip_id -> (seq, time, stop_id)
         last_stop: dict[str, tuple[int, str, int]] = {}
+        # Every distinct (stop_id, route_id) pair seen anywhere in the feed —
+        # the raw material for the "lines at this stop" search (stop_routes
+        # table, written further down once line_group_id is known). Far
+        # smaller than stop_times itself (one entry per stop-route pair
+        # instead of per scheduled visit), so this stays cheap to accumulate
+        # in memory across the chunked pass below.
+        stop_route_pairs: set[tuple[int, str]] = set()
         chunk_iter = pd.read_csv(
             z.open("stop_times.txt"),
             usecols=["trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"],
@@ -190,6 +205,11 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
                 insert_stop_times,
                 mapped[["trip_row_id", "stop_sequence", "stop_id", "arrival_seconds"]].itertuples(index=False, name=None),
             )
+
+            pairs = chunk[["stop_id"]].copy()
+            pairs["route_id"] = chunk["trip_id"].map(trip_id_to_route_id)
+            pairs = pairs.dropna(subset=["route_id"]).drop_duplicates()
+            stop_route_pairs.update(pairs.itertuples(index=False, name=None))
             conn.commit()
             print(f"  ...chunk {i + 1}, {len(first_stop)} trips seen so far")
 
@@ -254,6 +274,22 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
     for route_id in terminal_counts.index:
         line_group_id.setdefault(route_id, route_id)
 
+    print("Writing stop_routes (lines serving each stop) ...")
+    # Remap every (stop_id, route_id) pair collected during the stop_times
+    # pass to its merged line's representative route_id (line_group_id) —
+    # the same "route_id = line_group_id" convention the routes table and
+    # LineScheduleRepository's queries already use — then dedupe again, since
+    # both directions of a paired line now collapse to the same pair. Routes
+    # dropped from terminal_counts (missing first/last stop) are skipped,
+    # matching the departures-building filter below.
+    stop_line_rows = {
+        (stop_id, line_group_id[route_id])
+        for stop_id, route_id in stop_route_pairs
+        if route_id in line_group_id
+    }
+    conn.executemany("INSERT INTO stop_routes VALUES (?, ?)", stop_line_rows)
+    conn.execute("CREATE INDEX idx_stop_routes_stop_id ON stop_routes(stop_id)")
+
     print(f"Writing {len(terminal_counts)} routes ...")
     route_rows = []
     for route_id in terminal_counts.index:
@@ -300,8 +336,10 @@ def build(gtfs_zip: Path, output_db: Path) -> None:
     conn.execute("CREATE INDEX idx_departures_trip_id ON departures(trip_id)")
 
     conn.executemany(
-        "INSERT INTO stops VALUES (?, ?)", stop_names.items()
+        "INSERT INTO stops VALUES (?, ?, ?)",
+        [(stop_id, name, stop_codes.get(stop_id)) for stop_id, name in stop_names.items()]
     )
+    conn.execute("CREATE INDEX idx_stops_stop_code ON stops(stop_code)")
 
     calendar_days = calendar[["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]].apply(
         lambda col: pd.to_numeric(col, errors="coerce").fillna(0).astype(int)
@@ -334,7 +372,10 @@ def create_schema(conn: sqlite3.Connection) -> None:
             line_group_id TEXT, paired_route_id TEXT
         )
     """)
-    conn.execute("CREATE TABLE stops (stop_id INTEGER PRIMARY KEY, stop_name TEXT)")
+    # stop_code is the physical station number printed on the stop's real-world
+    # sign (Israel's MOT feed) — distinct from stop_id, which is just this
+    # feed's internal identifier. Not every stop has one.
+    conn.execute("CREATE TABLE stops (stop_id INTEGER PRIMARY KEY, stop_name TEXT, stop_code TEXT)")
     conn.execute("""
         CREATE TABLE departures (
             id INTEGER PRIMARY KEY,
@@ -342,6 +383,12 @@ def create_schema(conn: sqlite3.Connection) -> None:
             headsign TEXT, direction_id INTEGER, departure_time INTEGER
         )
     """)
+    # Precomputed at build time from the ~18M-row stop_times pass (see
+    # stop_route_pairs in build()) so an on-device "lines at this stop" search
+    # doesn't need an index over that whole table — this is one row per
+    # distinct (stop, merged-line) pair instead, a couple orders of magnitude
+    # smaller and cheap to index directly.
+    conn.execute("CREATE TABLE stop_routes (stop_id INTEGER, route_id TEXT)")
     # WITHOUT ROWID + a composite key clusters the table itself in
     # (trip_row_id, stop_sequence) order instead of keeping a separate
     # ~260MB secondary index for that same lookup — this table alone was

@@ -7,17 +7,21 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Live navigation: satellite GPS fix only (see LocationTracker) — never
-         used to request network/cell-tower based location, which on stock
-         Android resolves via an online Google service and would break the
-         fully-offline requirement. -->
+         network/cell-tower based location there, which on stock Android
+         resolves via an online Google service and would be far too coarse
+         (often hundreds of meters) to track position against a route.
+         One-shot "locate me" lookups (map recenter, search's "use current
+         location") do race NETWORK_PROVIDER alongside GPS — see
+         LocationTracker.updates(includeNetwork). -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- Android 12+ silently downgrades a FINE-only request to COARSE-only
          unless COARSE is also declared — this app's own code only ever acts
          on a granted ACCESS_FINE_LOCATION (see MainActivity/SearchLocation-
          Activity/LiveNavigationActivity), so without this the live-GPS path
-         would quietly stop working on modern devices. Still satellite-GPS
-         only: LocationTracker never touches NETWORK_PROVIDER, so declaring
-         this doesn't pull in any online/network location lookups. -->
+         would quietly stop working on modern devices. Also what gates
+         NETWORK_PROVIDER for one-shot lookups (see above) — it needs an
+         actual internet connection to resolve to coordinates, so it simply
+         does nothing on a genuinely offline device. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-feature
         android:name="android.hardware.location.gps"

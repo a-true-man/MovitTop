@@ -36,8 +36,9 @@ enum class TransportMode(
  * card stays on screen (see util/Ticker.kt).
  * @param distanceText already-formatted walk/bike distance (e.g. "1.3 ק״מ"), null for
  * modes where [priceText] is shown instead.
- * @param transitBadges the line(s) ridden, in order, for a [TransportMode.TRANSIT] option —
- * empty for every other mode.
+ * @param transitBadges the chain of legs ridden, in order, for a [TransportMode.TRANSIT]
+ * option — both the line(s) and the walking legs between/around them — empty for every
+ * other mode.
  * @param viaStopText the first boarding stop's name, shown under a transit option's line badges.
  */
 data class RouteOption(
@@ -54,10 +55,14 @@ data class RouteOption(
     val viaStopText: String? = null
 )
 
-/** One line-number chip on a transit [RouteOption] card, colored like its map leg. */
+/**
+ * One chip on a transit [RouteOption] card, colored like its matching map leg —
+ * either a line ridden, or (when [isWalk]) a walking leg between/around them.
+ */
 data class TransitLineBadge(
     val label: String,
-    val colorArgb: Int
+    val colorArgb: Int,
+    val isWalk: Boolean = false
 )
 
 /**
@@ -130,11 +135,16 @@ data class NearbyDeparture(
     val colorArgb: Int
 )
 
-/** One transit stop (bus/rail/etc.) as shown as a map marker. */
+/**
+ * One transit stop (bus/rail/etc.) as shown as a map marker.
+ * @param code the physical station number printed on the stop's sign
+ * (GTFS stop_code), when the feed provides one — distinct from [stopId].
+ */
 data class TransitStopPlace(
     val stopId: String,
     val name: String,
-    val point: GeoPoint
+    val point: GeoPoint,
+    val code: String? = null
 )
 
 interface MotisRepository {

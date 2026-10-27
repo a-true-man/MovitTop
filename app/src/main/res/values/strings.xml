@@ -22,6 +22,7 @@
     <string name="search_tap_to_choose">Tap to search</string>
     <string name="search_origin_title">Choose origin</string>
     <string name="search_destination_title">Choose destination</string>
+    <string name="search_manual_location_title">Set manual location</string>
     <string name="search_location_hint">Search address or place\u2026</string>
     <string name="search_no_results">No places found. Try a different name.</string>
     <string name="search_use_current_location">My current location</string>
@@ -181,15 +182,24 @@
     <string name="settings_language_title">Language</string>
     <string name="settings_language_hebrew">עברית (Hebrew)</string>
     <string name="settings_language_english">English</string>
+    <string name="settings_manual_location_title">Manual location fallback</string>
+    <string name="settings_manual_location_description">Satellite GPS can take a long time indoors, or fail entirely. Set an address here and MovitTop will use it for \"my current location\" whenever a GPS fix doesn\'t arrive in time.</string>
+    <string name="settings_manual_location_not_set">Not set</string>
+    <string name="settings_manual_location_set_button">Set address</string>
+    <string name="settings_manual_location_change_button">Change address</string>
+    <string name="settings_manual_location_clear_button">Clear</string>
+    <string name="settings_manual_location_cleared">Manual location cleared.</string>
+    <string name="settings_manual_location_not_precise">That result isn\'t a precise location. Pick a specific address, place, or point on the map.</string>
     <string name="line_times_button_description">Line times</string>
     <string name="line_times_title">Line times</string>
-    <string name="line_times_hint">Line number or name…</string>
+    <string name="line_times_hint">Line number/name or stop number…</string>
     <string name="line_times_no_results">No lines found for that search.</string>
     <string name="line_times_no_departures">No departures found for this direction on this day.</string>
     <string name="line_times_no_stops">No stops found for this trip.</string>
     <string name="line_times_unavailable">Line schedule data isn\'t installed on this device yet.</string>
     <string name="line_times_favorites_title">Saved lines</string>
     <string name="line_times_favorites_empty">No saved lines yet. Search a line and tap the star to save it.</string>
+    <string name="line_times_stop_header">Lines at %1$s (stop no. %2$s)</string>
     <string name="line_times_back_description">Back</string>
     <string name="line_times_direction_toggle_description">Switch direction</string>
     <string name="line_times_timetable_eyebrow">Timetable</string>
@@ -201,7 +211,8 @@
     <string name="map_zoom_in">Zoom in</string>
     <string name="map_zoom_out">Zoom out</string>
     <string name="map_my_location">Center on my location</string>
-    <string name="map_location_unavailable">Couldn\'t get your location. Check GPS is on and permission is granted.</string>
+    <string name="map_location_unavailable">Couldn\'t get your location. GPS can take much longer indoors or with a weak sky view, and network-based location needs an internet connection. You can set a fallback address in Settings.</string>
+    <string name="location_using_manual_fallback">Location lookup timed out — using the location you set in Settings.</string>
 
     <!-- Nearby departures -->
     <string name="nearby_empty">No upcoming departures found nearby. Try moving closer to a stop, or check GPS is on.</string>
@@ -251,6 +262,7 @@
     <string name="stop_info_no_routes">No upcoming departures found for this stop right now.</string>
     <string name="stop_departures_back_description">Back</string>
     <string name="stop_line_schedule_title">Route %1$s · %2$s</string>
+    <string name="stop_code_label">Stop no. %1$s</string>
     <string name="stop_line_also_at">Also at %1$s</string>
 
     <!-- Relative time formatting (RelativeTime.kt) -->

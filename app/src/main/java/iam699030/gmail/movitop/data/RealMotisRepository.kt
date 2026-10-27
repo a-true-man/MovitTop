@@ -34,6 +34,7 @@ private const val MAX_WALK_MINUTES = 180
 private const val MAX_BIKE_MINUTES = 240
 private const val MAX_TRANSIT_OPTIONS = 4
 private const val BADGE_LABEL_MAX_CHARS = 10
+private const val MIN_WALK_BADGE_SECONDS = 60
 
 /**
  * Talks to the MOTIS HTTP server started on-device by [iam699030.gmail.movitop.MotisForegroundService]
@@ -153,7 +154,7 @@ class RealMotisRepository(
                     departTimeText = IsoTime.toClockText(itinerary.startTime),
                     arriveTimeText = IsoTime.toClockText(itinerary.endTime),
                     departEpochMillis = IsoTime.toEpochMillis(itinerary.startTime),
-                    transitBadges = transitLegs.map { TransitLineBadge(badgeLabel(it), LegColors.forLeg(it)) },
+                    transitBadges = buildLegBadges(itinerary.legs.orEmpty()),
                     viaStopText = transitLegs.firstOrNull()?.from?.name?.let {
                         getString(R.string.route_option_via_stop, it)
                     }
@@ -267,7 +268,7 @@ class RealMotisRepository(
             val stopId = place.stopId ?: return@mapNotNull null
             val lat = place.lat ?: return@mapNotNull null
             val lon = place.lon ?: return@mapNotNull null
-            TransitStopPlace(stopId, place.name ?: "", GeoPoint(lat, lon))
+            TransitStopPlace(stopId, place.name ?: "", GeoPoint(lat, lon), place.stopCode?.takeIf { it.isNotBlank() })
         }
     }
 
@@ -343,6 +344,33 @@ class RealMotisRepository(
         } else {
             label
         }
+    }
+
+    /**
+     * The badge chain for a transit itinerary's card (see [RouteAdapter]) —
+     * every line ridden plus the walking legs between/around them, in order,
+     * so the card shows the whole trip instead of implying the lines connect
+     * by themselves. [walkBadge] drops legs too short to be worth a badge.
+     */
+    private fun buildLegBadges(legs: List<LegDto>): List<TransitLineBadge> =
+        legs.mapNotNull { leg ->
+            when {
+                isTransitLeg(leg) -> TransitLineBadge(badgeLabel(leg), LegColors.forLeg(leg))
+                leg.mode == "WALK" -> walkBadge(leg)
+                else -> null // BIKE/CAR don't occur inside a TRANSIT itinerary
+            }
+        }
+
+    /**
+     * Null for a walk leg with no/negligible duration — MOTIS sometimes emits
+     * a zero-length "walk" as a bookkeeping connector between two transit
+     * legs that already meet at the same stop, which isn't worth a badge.
+     */
+    private fun walkBadge(leg: LegDto): TransitLineBadge? {
+        val seconds = leg.duration ?: return null
+        if (seconds < MIN_WALK_BADGE_SECONDS) return null
+        val minutes = (seconds / 60.0).roundToInt().coerceAtLeast(1)
+        return TransitLineBadge(getString(R.string.duration_minutes, minutes), LegColors.forLeg(leg), isWalk = true)
     }
 
     /** e.g. "480" or "142 + 5" — lets the UI tell apart several TRANSIT options at a glance. */

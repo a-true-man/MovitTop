@@ -193,6 +193,22 @@
         android:textStyle="bold"
         android:visibility="gone" />
 
+    <!-- Shown instead of lineTimesFavoritesHeader when the query matched a
+         station number (see LineTimesViewModel.UiState.stopMatch). -->
+    <TextView
+        android:id="@+id/lineTimesStopHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:layout_marginBottom="2dp"
+        android:letterSpacing="0.03"
+        android:textColor="@color/movitop_text_secondary"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:text="הקווים בתחנה יהודה הנשיא ג (מספר 60309)"
+        tools:visibility="visible" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/departuresRecycler"
         android:layout_width="match_parent"

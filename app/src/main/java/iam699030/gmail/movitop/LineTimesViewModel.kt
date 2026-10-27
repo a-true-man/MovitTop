@@ -7,6 +7,7 @@ import iam699030.gmail.movitop.data.FavoriteLinesRepository
 import iam699030.gmail.movitop.data.LineDeparture
 import iam699030.gmail.movitop.data.LineScheduleRepository
 import iam699030.gmail.movitop.data.LineSummary
+import iam699030.gmail.movitop.data.StopLines
 import iam699030.gmail.movitop.data.TripStop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -52,6 +53,10 @@ class LineTimesViewModel(application: Application) : AndroidViewModel(applicatio
         // query is blank, rather than an actual search result.
         val showingFavorites: Boolean = false,
         val favoriteLineIds: List<String> = emptyList(),
+        // Non-null when the query matched a station number instead of a line
+        // number/name — [lineSummaries] are then that stop's lines, not a
+        // route-name search result (see LineTimesViewModel.runSearch).
+        val stopMatch: StopLines? = null,
         // Line detail screen
         val lineDepartures: List<LineDeparture> = emptyList(),
         // Trip detail screen
@@ -101,14 +106,34 @@ class LineTimesViewModel(application: Application) : AndroidViewModel(applicatio
         _queryChanges.tryEmit(query)
     }
 
+    /**
+     * A purely-numeric query could be either a line number or a station
+     * number — an exact station-number (stop_code) match wins when there is
+     * one, since that's a specific, effectively-unique lookup, falling back
+     * to the usual line-number/name search otherwise. A query with any
+     * non-digit character (most line short names, e.g. "קו 480") can only
+     * ever be a line search, so the stop lookup isn't even attempted.
+     */
     private fun runSearch(query: String) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            val results = withContext(Dispatchers.IO) {
-                repository.findLineSummaries(query.trim())
+            val trimmed = query.trim()
+            val stopMatch = if (trimmed.isNotEmpty() && trimmed.all(Char::isDigit)) {
+                withContext(Dispatchers.IO) { repository.findLinesAtStopCode(trimmed) }
+            } else {
+                null
             }
+            val results = stopMatch?.lines ?: withContext(Dispatchers.IO) {
+                repository.findLineSummaries(trimmed)
+            }
+            // The box going blank bypasses the debounce entirely (see
+            // search()), so this can still land after loadFavoritesIfBlank()
+            // already ran for a query that was cleared while this was in
+            // flight — discard it rather than clobbering favorites with a
+            // stale search result.
+            if (_uiState.value.query.trim() != trimmed) return@launch
             _uiState.value = _uiState.value.copy(
-                lineSummaries = results, searched = true, showingFavorites = false
+                lineSummaries = results, searched = true, showingFavorites = false, stopMatch = stopMatch
             )
         }
     }
@@ -129,14 +154,21 @@ class LineTimesViewModel(application: Application) : AndroidViewModel(applicatio
         loadJob?.cancel()
         val saved = favorites.getAll()
         if (saved.isEmpty()) {
-            _uiState.value = _uiState.value.copy(lineSummaries = emptyList(), searched = false, showingFavorites = false)
+            _uiState.value = _uiState.value.copy(
+                lineSummaries = emptyList(), searched = false, showingFavorites = false, stopMatch = null
+            )
             return
         }
         loadJob = viewModelScope.launch {
             val results = withContext(Dispatchers.IO) {
                 saved.mapNotNull { routeId -> repository.findRouteInfo(routeId) }
             }
-            _uiState.value = _uiState.value.copy(lineSummaries = results, searched = true, showingFavorites = true)
+            // Symmetric guard to runSearch()'s: don't let a slow favorites
+            // load stomp on a search the user has since typed.
+            if (_uiState.value.query.isNotBlank()) return@launch
+            _uiState.value = _uiState.value.copy(
+                lineSummaries = results, searched = true, showingFavorites = true, stopMatch = null
+            )
         }
     }
 

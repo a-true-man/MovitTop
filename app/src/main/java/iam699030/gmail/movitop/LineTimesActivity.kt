@@ -69,6 +69,7 @@ class LineTimesActivity : AppCompatActivity() {
     private lateinit var emptyState: View
     private lateinit var emptyText: TextView
     private lateinit var favoritesHeader: TextView
+    private lateinit var stopHeader: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,6 +104,7 @@ class LineTimesActivity : AppCompatActivity() {
         emptyState = findViewById(R.id.lineTimesEmptyState)
         emptyText = findViewById(R.id.lineTimesEmptyText)
         favoritesHeader = findViewById(R.id.lineTimesFavoritesHeader)
+        stopHeader = findViewById(R.id.lineTimesStopHeader)
 
         recycler.layoutManager = LinearLayoutManager(this)
 
@@ -171,6 +173,14 @@ class LineTimesActivity : AppCompatActivity() {
                 recycler.visibility = if (state.lineSummaries.isEmpty()) View.GONE else View.VISIBLE
                 favoritesHeader.visibility =
                     if (state.showingFavorites && state.lineSummaries.isNotEmpty()) View.VISIBLE else View.GONE
+                val stopMatch = state.stopMatch
+                stopHeader.visibility =
+                    if (stopMatch != null && state.lineSummaries.isNotEmpty()) View.VISIBLE else View.GONE
+                if (stopMatch != null) {
+                    stopHeader.text = getString(
+                        R.string.line_times_stop_header, stopMatch.stopName, stopMatch.stopCode
+                    )
+                }
             }
 
             is LineTimesScreen.LineDetail -> {
@@ -179,6 +189,7 @@ class LineTimesActivity : AppCompatActivity() {
                 searchRow.visibility = View.GONE
                 dateButton.visibility = View.VISIBLE
                 favoritesHeader.visibility = View.GONE
+                stopHeader.visibility = View.GONE
 
                 detailEyebrow.text = getString(R.string.line_times_timetable_eyebrow)
                 bindLineIdentity(screen.line)
@@ -199,6 +210,7 @@ class LineTimesActivity : AppCompatActivity() {
                 searchRow.visibility = View.GONE
                 dateButton.visibility = View.GONE
                 favoritesHeader.visibility = View.GONE
+                stopHeader.visibility = View.GONE
 
                 detailEyebrow.text = getString(
                     R.string.line_times_trip_stops_eyebrow, GtfsTime.format(screen.departure.departureTime)

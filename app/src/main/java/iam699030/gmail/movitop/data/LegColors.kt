@@ -1,6 +1,7 @@
 package iam699030.gmail.movitop.data
 
 import android.graphics.Color
+import androidx.core.graphics.ColorUtils
 import iam699030.gmail.movitop.data.api.LegDto
 
 /**
@@ -51,4 +52,18 @@ object LegColors {
             null
         }
     }
+
+    // Luminance crossover (sqrt(1.05 * 0.05) - 0.05) above which black text
+    // has higher contrast than white against a flat background of that
+    // luminance; below it, white wins. Used so a line badge can use its own
+    // (GTFS or fallback) color as its background — real transit-signage
+    // style — instead of drawing that color as text on an unrelated chip,
+    // which is what produced harsh, sometimes barely-legible combinations.
+    private const val LUMINANCE_CROSSOVER = 0.179
+    private val DARK_CONTENT = Color.parseColor("#14181F")
+    private const val LIGHT_CONTENT = Color.WHITE
+
+    /** The readable text/icon color (near-black or white) for content drawn on [backgroundArgb]. */
+    fun contentColorFor(backgroundArgb: Int): Int =
+        if (ColorUtils.calculateLuminance(backgroundArgb) > LUMINANCE_CROSSOVER) DARK_CONTENT else LIGHT_CONTENT
 }

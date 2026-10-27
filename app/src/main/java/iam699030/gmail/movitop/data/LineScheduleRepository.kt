@@ -1,6 +1,7 @@
 package iam699030.gmail.movitop.data
 
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
 import android.util.Log
@@ -40,6 +41,18 @@ data class LineSummary(
 data class TripStop(
     val stopName: String,
     val arrivalTime: String
+)
+
+/**
+ * The stop matching a searched station number (GTFS stop_code — the number
+ * printed on the physical sign), with every line (both directions merged)
+ * that serves it. The by-stop-number counterpart to searching a line
+ * directly by its own number/name (see [LineScheduleRepository.findLineSummaries]).
+ */
+data class StopLines(
+    val stopCode: String,
+    val stopName: String,
+    val lines: List<LineSummary>
 )
 
 /**
@@ -107,6 +120,52 @@ class LineScheduleRepository(private val context: Context) {
         }
     }
 
+    /**
+     * The stop whose station number (GTFS stop_code — the number on the
+     * physical sign) is exactly [stopCode], with every line serving it. Null
+     * when no stop in the feed has that code. Looked up against
+     * build_line_schedules.py's precomputed `stop_routes` table (one row per
+     * distinct stop/merged-line pair) rather than scanning the much larger
+     * `stop_times` table directly.
+     */
+    fun findLinesAtStopCode(stopCode: String): StopLines? {
+        if (!isAvailable() || stopCode.isBlank()) return null
+        val trimmed = stopCode.trim()
+        return try {
+            val db = SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY)
+            db.use {
+                val stopName = it.rawQuery(
+                    "SELECT stop_name FROM stops WHERE stop_code = ? LIMIT 1",
+                    arrayOf(trimmed)
+                ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null } ?: return null
+
+                val lines = mutableListOf<LineSummary>()
+                it.rawQuery(
+                    """
+                    SELECT DISTINCT r.route_id, r.route_short_name, r.route_long_name, r.agency_name,
+                           s1.stop_name, s2.stop_name, r.paired_route_id
+                    FROM stops st
+                    JOIN stop_routes sr ON sr.stop_id = st.stop_id
+                    JOIN routes r ON r.route_id = sr.route_id
+                    LEFT JOIN stops s1 ON s1.stop_id = r.first_stop_id
+                    LEFT JOIN stops s2 ON s2.stop_id = r.last_stop_id
+                    WHERE st.stop_code = ?
+                    ORDER BY r.route_short_name
+                    """.trimIndent(),
+                    arrayOf(trimmed)
+                ).use { cursor ->
+                    while (cursor.moveToNext()) {
+                        lines += cursor.toLineSummary()
+                    }
+                }
+                StopLines(stopCode = trimmed, stopName = stopName, lines = lines)
+            }
+        } catch (e: SQLiteException) {
+            Log.e(TAG, "Stop-code line lookup failed", e)
+            null
+        }
+    }
+
     private fun queryLineSummaries(whereClause: String, whereArg: String): List<LineSummary> {
         val db = SQLiteDatabase.openDatabase(dbFile.path, null, SQLiteDatabase.OPEN_READONLY)
         return db.use {
@@ -124,20 +183,27 @@ class LineScheduleRepository(private val context: Context) {
                 arrayOf(whereArg)
             ).use { cursor ->
                 while (cursor.moveToNext()) {
-                    results += LineSummary(
-                        routeId = cursor.getString(0) ?: "",
-                        routeShortName = cursor.getString(1) ?: "",
-                        routeLongName = cursor.getString(2) ?: "",
-                        agencyName = cursor.getString(3) ?: "",
-                        firstStopName = cursor.getString(4) ?: "",
-                        lastStopName = cursor.getString(5) ?: "",
-                        pairedRouteId = cursor.getString(6)
-                    )
+                    results += cursor.toLineSummary()
                 }
             }
             results
         }
     }
+
+    /**
+     * Reads one row shaped like `queryLineSummaries`'/[findLinesAtStopCode]'s
+     * SELECT — same six columns (route_id, route_short_name, route_long_name,
+     * agency_name, first stop name, last stop name) plus paired_route_id.
+     */
+    private fun Cursor.toLineSummary() = LineSummary(
+        routeId = getString(0) ?: "",
+        routeShortName = getString(1) ?: "",
+        routeLongName = getString(2) ?: "",
+        agencyName = getString(3) ?: "",
+        firstStopName = getString(4) ?: "",
+        lastStopName = getString(5) ?: "",
+        pairedRouteId = getString(6)
+    )
 
     /** Departures for one specific direction (route_id), active on [dateEpochDay], sorted by time. */
     fun findDeparturesForRoute(routeId: String, dateEpochDay: Long): List<LineDeparture> {

@@ -41,6 +41,7 @@ import iam699030.gmail.movitop.data.CallableStation
 import iam699030.gmail.movitop.data.DirectModeAdapter
 import iam699030.gmail.movitop.data.DriverStations
 import iam699030.gmail.movitop.data.GeoPoint
+import iam699030.gmail.movitop.data.ManualLocationRepository
 import iam699030.gmail.movitop.data.MapLeg
 import iam699030.gmail.movitop.data.MotisRepository
 import iam699030.gmail.movitop.data.NearbyDeparture
@@ -120,6 +121,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var startNavigationButton: MaterialButton
     private lateinit var stopDeparturesContainer: LinearLayout
     private lateinit var stopDeparturesTitle: TextView
+    private lateinit var stopDeparturesCode: TextView
     private lateinit var stopBackButton: View
     private lateinit var stopDeparturesRecycler: RecyclerView
     private lateinit var stopDeparturesEmpty: TextView
@@ -290,6 +292,7 @@ class MainActivity : AppCompatActivity() {
         startNavigationButton.setOnClickListener { startLiveNavigation() }
         stopDeparturesContainer = findViewById(R.id.stopDeparturesContainer)
         stopDeparturesTitle = findViewById(R.id.stopDeparturesTitle)
+        stopDeparturesCode = findViewById(R.id.stopDeparturesCode)
         stopBackButton = findViewById(R.id.stopBackButton)
         stopBackButton.setOnClickListener { returnToStopDepartures() }
         stopDeparturesRecycler = findViewById(R.id.stopDeparturesRecycler)
@@ -529,6 +532,7 @@ class MainActivity : AppCompatActivity() {
     /** A POI tapped on the map (see StationMarkersController) is handed off as a destination pick. */
     private fun pickPoiAsDestination(poi: Poi) {
         viewModel.setDestination(poi.name, poi.point)
+        viewModel.returnToIdle()
         destinationText.text = poi.name
         showHomePane()
         bottomSheetBehavior.state = BottomSheetBehavior.STATE_HALF_EXPANDED
@@ -553,7 +557,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** Requests one GPS fix (satellite-only, see [LocationTracker]) and recenters the map on it. */
+    /** Requests one fix (GPS raced against network location, see [LocationTracker]) and recenters the map on it. */
     private fun requestMyLocation() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
@@ -566,14 +570,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * If no fix arrives in time, falls back to the address set in Settings (see
+     * [ManualLocationRepository]), if any.
+     */
     private fun centerOnMyLocation() {
         lifecycleScope.launch {
-            val point = withTimeoutOrNull(LocationTracker.ONE_SHOT_FIX_TIMEOUT_MS) {
-                LocationTracker(this@MainActivity).updates().firstOrNull()
+            val fix = withTimeoutOrNull(LocationTracker.ONE_SHOT_FIX_TIMEOUT_MS) {
+                LocationTracker(this@MainActivity).updates(includeNetwork = true).firstOrNull()
             }
+            val point = fix ?: ManualLocationRepository(this@MainActivity).get()?.let { GeoPoint(it.lat, it.lon) }
             if (point == null) {
                 showSnackbar(R.string.map_location_unavailable, Snackbar.LENGTH_LONG)
                 return@launch
+            }
+            if (fix == null) {
+                showSnackbar(R.string.location_using_manual_fallback, Snackbar.LENGTH_SHORT)
             }
             refreshNearbyList(point)
             mapView.model.mapViewPosition.center = LatLong(point.lat, point.lon)
@@ -859,6 +871,7 @@ class MainActivity : AppCompatActivity() {
                         viewModel.backToSummary()
                     stopBackButton.visibility == View.VISIBLE -> returnToStopDepartures()
                     homeContainer.visibility != View.VISIBLE -> {
+                        viewModel.returnToIdle()
                         showHomePane()
                         bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
                     }
@@ -1278,6 +1291,7 @@ class MainActivity : AppCompatActivity() {
         currentStopDepartures = emptyList()
         stopBackButton.visibility = View.GONE
         stopDeparturesTitle.text = stop.name
+        bindStopCode(stop)
         stopDeparturesEmpty.visibility = View.GONE
         stopDeparturesRecycler.adapter = stopLineAdapter
         showStopPane()
@@ -1298,11 +1312,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Shows the stop's physical station number under its name, when the feed has one. */
+    private fun bindStopCode(stop: TransitStopPlace) {
+        val code = stop.code
+        if (code.isNullOrEmpty()) {
+            stopDeparturesCode.visibility = View.GONE
+        } else {
+            stopDeparturesCode.visibility = View.VISIBLE
+            stopDeparturesCode.text = getString(R.string.stop_code_label, code)
+        }
+    }
+
     /** Drills into one line's full remaining schedule for today at the current stop. */
     private fun showLineScheduleAtStop(routeShortName: String) {
         val stop = currentStopContext ?: return
         stopBackButton.visibility = View.VISIBLE
         stopDeparturesTitle.text = getString(R.string.stop_line_schedule_title, routeShortName, stop.name)
+        bindStopCode(stop)
         stopDeparturesEmpty.visibility = View.GONE
         stopDeparturesRecycler.adapter = lineScheduleAdapter
         lineScheduleAdapter.submitList(emptyList())
@@ -1328,6 +1354,7 @@ class MainActivity : AppCompatActivity() {
         val stop = currentStopContext ?: return
         stopBackButton.visibility = View.GONE
         stopDeparturesTitle.text = stop.name
+        bindStopCode(stop)
         stopDeparturesRecycler.adapter = stopLineAdapter
         stopLineAdapter.submitList(currentStopDepartures.groupByLine())
         stopDeparturesEmpty.visibility = if (currentStopDepartures.isEmpty()) View.VISIBLE else View.GONE

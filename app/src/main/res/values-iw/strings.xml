@@ -16,6 +16,7 @@
     <string name="search_tap_to_choose">לחץ לחיפוש</string>
     <string name="search_origin_title">בחירת מוצא</string>
     <string name="search_destination_title">בחירת יעד</string>
+    <string name="search_manual_location_title">הגדרת מיקום ידני</string>
     <string name="search_location_hint">חפש כתובת או מקום\u2026</string>
     <string name="search_no_results">לא נמצאו מקומות. נסו שם אחר.</string>
     <string name="search_use_current_location">המיקום הנוכחי שלי</string>
@@ -175,15 +176,24 @@
     <string name="settings_language_title">שפה</string>
     <string name="settings_language_hebrew">עברית</string>
     <string name="settings_language_english">English (אנגלית)</string>
+    <string name="settings_manual_location_title">מיקום ידני לגיבוי</string>
+    <string name="settings_manual_location_description">GPS לוויני עשוי לקחת זמן רב בתוך מבנים, או לא להצליח בכלל. הגדירו כאן כתובת, ו-MovitTop ישתמש בה עבור \"המיקום הנוכחי שלי\" בכל פעם שאיתור GPS לא מגיע בזמן.</string>
+    <string name="settings_manual_location_not_set">לא הוגדר</string>
+    <string name="settings_manual_location_set_button">הגדרת כתובת</string>
+    <string name="settings_manual_location_change_button">שינוי כתובת</string>
+    <string name="settings_manual_location_clear_button">ניקוי</string>
+    <string name="settings_manual_location_cleared">המיקום הידני נוקה.</string>
+    <string name="settings_manual_location_not_precise">התוצאה הזו אינה מיקום מדויק. בחרו כתובת, מקום או נקודה ספציפיים על המפה.</string>
     <string name="line_times_button_description">זמני קווים</string>
     <string name="line_times_title">זמני קווים</string>
-    <string name="line_times_hint">מספר או שם קו…</string>
+    <string name="line_times_hint">מספר/שם קו או מספר תחנה…</string>
     <string name="line_times_no_results">לא נמצאו קווים לחיפוש הזה.</string>
     <string name="line_times_no_departures">לא נמצאו יציאות לכיוון הזה ביום שנבחר.</string>
     <string name="line_times_no_stops">לא נמצאו תחנות לנסיעה הזו.</string>
     <string name="line_times_unavailable">נתוני זמני הקווים עדיין לא מותקנים על המכשיר.</string>
     <string name="line_times_favorites_title">קווים שמורים</string>
     <string name="line_times_favorites_empty">אין עדיין קווים שמורים. חפשו קו ולחצו על הכוכב כדי לשמור אותו.</string>
+    <string name="line_times_stop_header">הקווים בתחנה %1$s (מספר %2$s)</string>
     <string name="line_times_back_description">חזרה</string>
     <string name="line_times_direction_toggle_description">החלפת כיוון</string>
     <string name="line_times_timetable_eyebrow">לוח זמנים</string>
@@ -195,7 +205,8 @@
     <string name="map_zoom_in">התקרבות</string>
     <string name="map_zoom_out">התרחקות</string>
     <string name="map_my_location">מרכז למיקום שלי</string>
-    <string name="map_location_unavailable">לא הצלחנו לאתר את המיקום שלך. ודאו ש-GPS פעיל וההרשאה ניתנה.</string>
+    <string name="map_location_unavailable">לא הצלחנו לאתר את המיקום שלך. GPS עשוי לקחת הרבה יותר זמן בתוך מבנה או בקליטה חלשה, ומיקום מבוסס-רשת דורש חיבור לאינטרנט. אפשר להגדיר כתובת גיבוי בהגדרות.</string>
+    <string name="location_using_manual_fallback">איתור המיקום נתקע בזמן — משתמשים במיקום שהגדרתם בהגדרות.</string>
 
     <!-- Nearby departures (Hebrew) -->
     <string name="nearby_empty">לא נמצאו יציאות בקרבת מקום. נסו להתקרב לתחנה, או ודאו ש-GPS פעיל.</string>
@@ -245,6 +256,7 @@
     <string name="stop_info_no_routes">לא נמצאו יציאות קרובות בתחנה זו כרגע.</string>
     <string name="stop_departures_back_description">חזרה</string>
     <string name="stop_line_schedule_title">קו %1$s · %2$s</string>
+    <string name="stop_code_label">מספר תחנה %1$s</string>
     <string name="stop_line_also_at">גם ב-%1$s</string>
 
     <!-- Relative time formatting (RelativeTime.kt) (Hebrew) -->

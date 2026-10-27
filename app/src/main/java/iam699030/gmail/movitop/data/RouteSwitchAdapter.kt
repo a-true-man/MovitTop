@@ -57,7 +57,8 @@ class RouteSwitchAdapter(
         holder.icon.contentDescription = context.getString(option.mode.labelRes)
         holder.duration.text = formatDuration(context, option.durationMinutes)
 
-        val subtitle = option.transitBadges.firstOrNull()?.label ?: option.priceText ?: option.distanceText
+        val subtitle = option.transitBadges.firstOrNull { !it.isWalk }?.label
+            ?: option.priceText ?: option.distanceText
         holder.subtitle.visibility = if (subtitle.isNullOrEmpty()) View.GONE else View.VISIBLE
         holder.subtitle.text = subtitle
 

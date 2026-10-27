@@ -178,6 +178,19 @@ class MainViewModel(
         }
     }
 
+    /**
+     * Resets routing state to Idle when the UI forces its way back to the
+     * Home pane outside of search()'s own flow (Back button, picking a POI
+     * on the map as a new destination). Without this, routingState is left
+     * at ResultsReady/ViewingRouteDetails while the Home pane is shown, and
+     * the next uiState emission — e.g. MainActivity's collector restarting
+     * after returning from SearchLocationActivity — snaps back to the
+     * results pane since renderRoutingState re-derives the pane from state.
+     */
+    fun returnToIdle() {
+        _uiState.update { it.copy(routingState = RoutingState.Idle) }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }
