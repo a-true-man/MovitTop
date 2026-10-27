@@ -141,6 +141,8 @@
     <string name="nav_reminder_settings_description">Reminder settings</string>
     <string name="nav_reminder_dialog_title">Get-off reminder</string>
     <string name="nav_reminder_stops_before">Alert me %1$d stops before</string>
+    <string name="nav_reminder_stops_minus">Fewer stops before</string>
+    <string name="nav_reminder_stops_plus">More stops before</string>
     <string name="nav_reminder_alert_mode_label">Alert mode</string>
     <string name="nav_reminder_mode_sound">Sound</string>
     <string name="nav_reminder_mode_vibrate">Vibrate</string>
@@ -274,7 +276,6 @@
     <string name="ravkav_accepts_cash">Accepts cash</string>
     <string name="ravkav_accepts_credit_card">Accepts credit card</string>
     <string name="ravkav_accessible">Wheelchair accessible</string>
-    <string name="ravkav_hours_closed">Closed</string>
     <string name="ravkav_days_sun_thu">Sun–Thu</string>
     <string name="ravkav_days_sun">Sun</string>
     <string name="ravkav_days_mon">Mon</string>

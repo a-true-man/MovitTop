@@ -227,7 +227,7 @@ class RealMotisRepository(
         }
 
         val legs = itinerary?.legs.orEmpty()
-        val steps = legs.map { leg -> buildRouteStep(leg) }
+        val steps = legs.mapIndexed { index, leg -> buildRouteStep(leg, isLastLeg = index == legs.lastIndex, destName = dest) }
         val mapLegs = legs.map { leg ->
             MapLeg(
                 points = PolylineDecoder.decode(leg.legGeometry?.points, leg.legGeometry?.precision ?: 7),
@@ -294,7 +294,7 @@ class RealMotisRepository(
         val epoch = IsoTime.toEpochMillis(departIso) ?: return null
         val stopPoint = GeoPoint(lat, lon)
         val shortName = routeShortName?.takeIf { it.isNotBlank() }
-        val headsignText = headsign?.takeIf { it.isNotBlank() }
+        val headsignText = headsign?.takeIf { it.isNotBlank() }?.let { GtfsHeadsign.clean(it) }
         val label = shortName ?: routeLongName?.takeIf { it.isNotBlank() } ?: mode.orEmpty()
         return NearbyDeparture(
             routeShortName = label,
@@ -325,7 +325,7 @@ class RealMotisRepository(
      */
     private fun lineLabel(leg: LegDto): String =
         leg.routeShortName?.takeIf { it.isNotBlank() }
-            ?: leg.headsign?.takeIf { it.isNotBlank() }
+            ?: leg.headsign?.takeIf { it.isNotBlank() }?.let { GtfsHeadsign.clean(it) }
             ?: leg.mode.orEmpty()
 
     /**
@@ -351,12 +351,30 @@ class RealMotisRepository(
         return lines.takeIf { it.isNotEmpty() }?.joinToString(" + ")
     }
 
+    /**
+     * MOTIS labels a free-form coordinate destination (one that isn't a real
+     * stop/POI — e.g. the user searched a broad place like "Tel Aviv" rather
+     * than a specific address) with a synthetic "END" name on the
+     * itinerary's last leg. Fall back to what the user actually searched
+     * for there instead of leaking that placeholder into the UI; every
+     * other leg's `to` is always a real stop/intersection from MOTIS's own
+     * graph, so it's used as-is.
+     */
+    private fun effectiveToName(rawName: String?, isLastLeg: Boolean, destName: String): String {
+        val trimmed = rawName?.takeIf { it.isNotBlank() }
+        return if (isLastLeg && (trimmed == null || trimmed.equals("END", ignoreCase = true))) {
+            destName
+        } else {
+            trimmed.orEmpty()
+        }
+    }
+
     private fun distanceText(meters: Double): String =
         if (meters >= 1000) getString(R.string.distance_km, meters / 1000.0)
         else getString(R.string.distance_meters, meters.roundToInt())
 
-    private fun buildRouteStep(leg: LegDto): RouteStep = RouteStep(
-        title = stepTitle(leg),
+    private fun buildRouteStep(leg: LegDto, isLastLeg: Boolean, destName: String): RouteStep = RouteStep(
+        title = stepTitle(leg, isLastLeg, destName),
         subtitle = stepSubtitle(leg),
         departTimeText = IsoTime.toClockText(leg.startTime),
         arriveTimeText = IsoTime.toClockText(leg.endTime),
@@ -368,8 +386,10 @@ class RealMotisRepository(
         val navSteps = mutableListOf<NavigationStep>()
         val isStreetMode = { m: String? -> m == "WALK" || m == "BIKE" || m == "CAR" }
 
-        legs.forEach { leg ->
+        legs.forEachIndexed { index, leg ->
+            val isLastLeg = index == legs.lastIndex
             val to = leg.to
+            val toName = effectiveToName(to?.name, isLastLeg, destName)
             val toPoint = GeoPoint(to?.lat ?: 0.0, to?.lon ?: 0.0)
             val legPolyline = PolylineDecoder.decode(
                 leg.legGeometry?.points,
@@ -380,7 +400,7 @@ class RealMotisRepository(
                 val legSteps = leg.steps.orEmpty()
                 if (legSteps.isEmpty() || legPolyline.isEmpty()) {
                     navSteps += NavigationStep.Walk(
-                        instruction = getString(R.string.nav_walk_continue_to, to?.name.orEmpty()),
+                        instruction = getString(R.string.nav_walk_continue_to, toName),
                         distanceMeters = leg.distance ?: 0.0,
                         point = toPoint,
                         estimatedSeconds = leg.duration ?: walkSeconds(leg.distance ?: 0.0),
@@ -423,13 +443,13 @@ class RealMotisRepository(
                         arriveTimeText = IsoTime.toClockText(place.arrival ?: place.departure)
                     )
                 } + RideStop(
-                    name = to?.name.orEmpty(),
+                    name = toName,
                     point = toPoint,
                     arriveTimeText = IsoTime.toClockText(leg.endTime)
                 )
                 navSteps += NavigationStep.Ride(
                     routeLabel = routeLabel,
-                    alightStopName = to?.name ?: "",
+                    alightStopName = toName,
                     point = toPoint,
                     estimatedSeconds = leg.duration ?: 0L,
                     arriveTimeText = IsoTime.toClockText(leg.endTime),
@@ -452,7 +472,7 @@ class RealMotisRepository(
 
     private fun routeLabelFor(leg: LegDto): String {
         val line = lineLabel(leg)
-        val headsign = leg.headsign?.takeIf { it.isNotBlank() }
+        val headsign = leg.headsign?.takeIf { it.isNotBlank() }?.let { GtfsHeadsign.clean(it) }
         return if (headsign != null) {
             getString(R.string.route_label_with_headsign, line, headsign)
         } else {
@@ -492,8 +512,8 @@ class RealMotisRepository(
         return (seconds / 60.0).roundToInt().coerceAtLeast(1)
     }
 
-    private fun stepTitle(leg: LegDto): String {
-        val destination = leg.to?.name ?: ""
+    private fun stepTitle(leg: LegDto, isLastLeg: Boolean, destName: String): String {
+        val destination = effectiveToName(leg.to?.name, isLastLeg, destName)
         return when (leg.mode) {
             "WALK" -> getString(R.string.route_step_walk_to, destination)
             "BIKE" -> getString(R.string.route_step_bike_to, destination)

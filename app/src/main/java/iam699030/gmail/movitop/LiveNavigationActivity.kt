@@ -165,7 +165,11 @@ class LiveNavigationActivity : AppCompatActivity() {
             observeEngine()
         }
 
-        closeButton.post { closeButton.requestFocus() }
+        // Initial focus is set in onWindowFocusChanged — see restoreFocusIfLost —
+        // since a plain/posted requestFocus() here can lose the race with
+        // Android's own default-focus pass (or a permission dialog taking
+        // window focus right after onCreate) and leave nothing focused at
+        // all, a dead end on D-Pad/keyboard-only hardware.
     }
 
     private fun bindViews() {
@@ -576,6 +580,24 @@ class LiveNavigationActivity : AppCompatActivity() {
         } else {
             @Suppress("DEPRECATION")
             vibrator.vibrate(150)
+        }
+    }
+
+    /**
+     * See [iam699030.gmail.movitop.MainActivity.onWindowFocusChanged] — same
+     * fix for the same class of bug: re-assert focus every time this window
+     * (re)gains focus, but only when nothing already holds it, so a lost
+     * initial-focus race (or a permission dialog stealing it) never leaves
+     * D-Pad/keyboard input with no focused view to deliver key events to.
+     * requestFocus() can still fail with hasFocus already true (the view
+     * hierarchy's first layout pass may not have finished at that exact
+     * moment) — posting retries once it has, re-checking currentFocus in
+     * case something else legitimately claimed it in the meantime.
+     */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && currentFocus == null) {
+            closeButton.post { if (currentFocus == null) closeButton.requestFocus() }
         }
     }
 

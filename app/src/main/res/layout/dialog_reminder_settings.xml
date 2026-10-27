@@ -38,8 +38,11 @@
             style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:text="−"
-            android:textSize="18sp" />
+            android:contentDescription="@string/nav_reminder_stops_minus"
+            app:icon="@drawable/ic_zoom_out"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="20dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/reminderStopsPlusButton"
@@ -47,8 +50,11 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_marginStart="8dp"
-            android:text="+"
-            android:textSize="18sp" />
+            android:contentDescription="@string/nav_reminder_stops_plus"
+            app:icon="@drawable/ic_zoom_in"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="20dp" />
     </LinearLayout>
 
     <TextView

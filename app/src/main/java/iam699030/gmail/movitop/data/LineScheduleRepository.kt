@@ -170,7 +170,7 @@ class LineScheduleRepository(private val context: Context) {
                             routeShortName = cursor.getString(1) ?: "",
                             routeLongName = cursor.getString(2) ?: "",
                             agencyName = cursor.getString(3) ?: "",
-                            headsign = cursor.getString(4) ?: "",
+                            headsign = GtfsHeadsign.clean(cursor.getString(4)),
                             departureTime = secondsToGtfsTime(cursor.getLong(5))
                         )
                     }

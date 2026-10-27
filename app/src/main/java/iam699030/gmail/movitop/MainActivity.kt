@@ -13,6 +13,7 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -124,6 +125,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var stopDeparturesEmpty: TextView
     private lateinit var settingsButton: MaterialButton
     private lateinit var lineTimesButton: MaterialButton
+    private lateinit var mapControls: View
     private lateinit var zoomInButton: MaterialButton
     private lateinit var zoomOutButton: MaterialButton
     private lateinit var myLocationButton: MaterialButton
@@ -139,7 +141,17 @@ class MainActivity : AppCompatActivity() {
 
     private val requestLocationPermission = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { results -> if (results[Manifest.permission.ACCESS_FINE_LOCATION] == true) centerOnMyLocation() }
+    ) { results ->
+        // Denial fell through silently here (see SearchLocationActivity's
+        // identical launcher, which already does this) — tapping "my
+        // location" after saying no would just do nothing, with no hint
+        // why, especially once Android stops re-prompting after a denial.
+        if (results[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            centerOnMyLocation()
+        } else {
+            showSnackbar(R.string.map_location_unavailable, Snackbar.LENGTH_LONG)
+        }
+    }
 
     // Android 13+ hides a foreground service's notification (the on-device
     // routing engine's only visible sign of life) until this is granted —
@@ -286,6 +298,7 @@ class MainActivity : AppCompatActivity() {
         settingsButton.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java)) }
         lineTimesButton = findViewById(R.id.lineTimesButton)
         lineTimesButton.setOnClickListener { startActivity(Intent(this, LineTimesActivity::class.java)) }
+        mapControls = findViewById(R.id.mapControls)
         zoomInButton = findViewById(R.id.zoomInButton)
         zoomOutButton = findViewById(R.id.zoomOutButton)
         myLocationButton = findViewById(R.id.myLocationButton)
@@ -346,6 +359,50 @@ class MainActivity : AppCompatActivity() {
         // a package — no need to relaunch the app to see it disappear.
         checkOfflineDataAvailability()
         refreshResumeChip()
+    }
+
+    /**
+     * On some devices, Android's own initial-focus pass (which runs once the
+     * window attaches, after onCreate returns) simply never lands on any
+     * view — a dead end for D-Pad/keyboard-only hardware, since every
+     * OnKeyListener in this screen only fires on the view that currently
+     * holds focus. The same can happen later too: a system dialog (e.g. the
+     * POST_NOTIFICATIONS prompt) takes window focus away and, on return,
+     * doesn't always restore it. onWindowFocusChanged fires every time this
+     * window (re)gains focus, so re-asserting focus here — but only when
+     * nothing already holds it — recovers from all of those cases without
+     * ever stealing focus the user deliberately moved elsewhere.
+     *
+     * (The on-device root cause turned out to be touch mode, not timing —
+     * see homePeekRow/originRow's android:focusableInTouchMode in
+     * layout_bottom_sheet_results.xml. This still needs to run the retry
+     * through a post{}, since the layout pass isn't always finished at the
+     * exact moment this callback fires either.)
+     */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && currentFocus == null) {
+            homePeekRow.post { if (currentFocus == null) restoreFocusIfLost() }
+        }
+    }
+
+    /** Picks the same focus target [setupResultsSheet]'s state callback would, for whatever is showing now. */
+    private fun restoreFocusIfLost() {
+        when (bottomSheetBehavior.state) {
+            BottomSheetBehavior.STATE_EXPANDED -> {
+                val target = when {
+                    stopDeparturesContainer.visibility == View.VISIBLE -> stopDeparturesRecycler
+                    detailsContainer.visibility == View.VISIBLE -> detailsRecycler
+                    homeContainer.visibility == View.VISIBLE -> nearbyListRecycler
+                    else -> resultsRecycler
+                }
+                focusFirstChild(target)
+            }
+            BottomSheetBehavior.STATE_HALF_EXPANDED ->
+                if (homeContainer.visibility == View.VISIBLE) originRow.requestFocus()
+            else ->
+                if (homeContainer.visibility == View.VISIBLE) homePeekRow.requestFocus()
+        }
     }
 
     /**
@@ -511,7 +568,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun centerOnMyLocation() {
         lifecycleScope.launch {
-            val point = withTimeoutOrNull(10_000L) {
+            val point = withTimeoutOrNull(LocationTracker.ONE_SHOT_FIX_TIMEOUT_MS) {
                 LocationTracker(this@MainActivity).updates().firstOrNull()
             }
             if (point == null) {
@@ -748,6 +805,20 @@ class MainActivity : AppCompatActivity() {
                     (parentHeight * MAX_PEEK_FRACTION).toInt()
                 )
                 bottomSheetBehavior.halfExpandedRatio = HOME_HALF_EXPANDED_FRACTION.coerceIn(0.3f, 0.7f)
+
+                // mapControls' XML margin anchors it to the screen's own
+                // bottom edge, independent of the sheet computed just above —
+                // on a short screen (or with a taller peek row: longer
+                // strings, larger font scale) the sheet's peek bar can grow
+                // tall enough to sit on top of the stack's lower buttons
+                // (seen on-device: dataImportButton fully hidden underneath
+                // it, unreachable by touch). Rest the stack on top of the
+                // sheet's actual current height instead of a fixed guess.
+                val gapPx = (14 * resources.displayMetrics.density).toInt()
+                (mapControls.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+                    it.bottomMargin = bottomSheetBehavior.peekHeight + gapPx
+                    mapControls.layoutParams = it
+                }
             }
         })
 
@@ -829,14 +900,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // A plain requestFocus() here loses to Android's own default-focus pass
-        // (it runs once the window actually attaches, which is after onCreate
-        // returns, and docks focus on mapView — the first focusable view in
-        // traversal order — since mapView.isFocusableInTouchMode = true lets
-        // it hold focus even before any touch). Posting re-asserts it after
-        // that pass so a D-Pad/keyboard user actually lands on the sheet's
-        // peek bar, not a map with no visible way back to search.
-        homePeekRow.post { homePeekRow.requestFocus() }
+        // Initial focus is set in onWindowFocusChanged — see restoreFocusIfLost —
+        // since a plain requestFocus() here loses the race with Android's own
+        // default-focus pass (which runs once the window actually attaches,
+        // after onCreate returns, and would otherwise dock focus on mapView,
+        // the first focusable view in traversal order).
     }
 
     private fun handleRowKey(view: View, keyCode: Int, event: KeyEvent, onSelect: () -> Unit): Boolean {
@@ -1306,6 +1374,12 @@ class MainActivity : AppCompatActivity() {
         recycler.post {
             val firstItem = recycler.findViewHolderForAdapterPosition(0)?.itemView
                 ?: recycler.layoutManager?.findViewByPosition(0)
+            // This sheet state is routinely reached by touch (dragging the
+            // sheet, tapping the search button) — row layouts aren't
+            // focusableInTouchMode, so a plain requestFocus() would be
+            // silently refused by Android's touch-mode rule and leave
+            // nothing focused (see MainActivity.onWindowFocusChanged).
+            firstItem?.isFocusableInTouchMode = true
             firstItem?.requestFocus()
             updateFocusChain()
         }

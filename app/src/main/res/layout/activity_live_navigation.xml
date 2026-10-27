@@ -41,6 +41,8 @@
                 style="@style/Widget.Material3.Button.IconButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:contentDescription="@string/nav_close_description"
                 app:icon="@drawable/ic_nav_close"
                 app:iconGravity="textStart"

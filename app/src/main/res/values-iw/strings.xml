@@ -135,6 +135,8 @@
     <string name="nav_reminder_settings_description">הגדרות תזכורת</string>
     <string name="nav_reminder_dialog_title">תזכורת ירידה</string>
     <string name="nav_reminder_stops_before">התראה %1$d תחנות לפני</string>
+    <string name="nav_reminder_stops_minus">פחות תחנות לפני</string>
+    <string name="nav_reminder_stops_plus">יותר תחנות לפני</string>
     <string name="nav_reminder_alert_mode_label">אופן ההתראה</string>
     <string name="nav_reminder_mode_sound">צליל</string>
     <string name="nav_reminder_mode_vibrate">רטט</string>
@@ -268,7 +270,6 @@
     <string name="ravkav_accepts_cash">ניתן לשלם במזומן</string>
     <string name="ravkav_accepts_credit_card">ניתן לשלם באשראי</string>
     <string name="ravkav_accessible">נגיש לנכים</string>
-    <string name="ravkav_hours_closed">סגור</string>
     <string name="ravkav_days_sun_thu">א׳-ה׳</string>
     <string name="ravkav_days_sun">א׳</string>
     <string name="ravkav_days_mon">ב׳</string>

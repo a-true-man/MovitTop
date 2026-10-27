@@ -254,7 +254,7 @@ class StationMarkersController(
         if (station.address.isNotBlank()) lines += context.getString(R.string.ravkav_label_address) + ": " + station.address
         if (station.agency.isNotBlank()) lines += context.getString(R.string.ravkav_label_agency) + ": " + station.agency
         if (station.phone.isNotBlank()) lines += context.getString(R.string.ravkav_label_phone) + ": " + station.phone
-        val hours = formatWeeklyHours(station.hoursByDay)
+        val hours = formatKnownWeeklyHours(station.hoursByDay)
         if (hours.isNotBlank()) lines += context.getString(R.string.ravkav_label_hours) + ": " + hours
         if (station.acceptsCash) lines += context.getString(R.string.ravkav_accepts_cash)
         if (station.acceptsCreditCard) lines += context.getString(R.string.ravkav_accepts_credit_card)
@@ -266,28 +266,6 @@ class StationMarkersController(
             .setView(view)
             .setPositiveButton(R.string.dialog_close_button, null)
             .show()
-    }
-
-    /** Groups Sun..Sat into contiguous same-hours ranges, e.g. "א׳-ה׳: 08:00-17:00; ו׳: 08:00-13:00". */
-    private fun formatWeeklyHours(hoursByDay: List<String>): String {
-        if (hoursByDay.size != 7) return ""
-        val dayLabels = listOf(
-            R.string.ravkav_days_sun, R.string.ravkav_days_mon, R.string.ravkav_days_tue,
-            R.string.ravkav_days_wed, R.string.ravkav_days_thu, R.string.ravkav_days_fri,
-            R.string.ravkav_days_sat
-        ).map { context.getString(it) }
-
-        val groups = mutableListOf<String>()
-        var i = 0
-        while (i < 7) {
-            var j = i
-            while (j + 1 < 7 && hoursByDay[j + 1] == hoursByDay[i]) j++
-            val label = if (i == j) dayLabels[i] else "${dayLabels[i]}-${dayLabels[j]}"
-            val text = hoursByDay[i].ifBlank { context.getString(R.string.ravkav_hours_closed) }
-            groups += "$label: $text"
-            i = j + 1
-        }
-        return groups.joinToString("; ")
     }
 
     private fun loadMarkerBitmap(drawableRes: Int, tintColor: Int? = null): MfBitmap {
@@ -312,10 +290,12 @@ class StationMarkersController(
     )
 
     /**
-     * Same grouping as [formatWeeklyHours] but silently skips days with no
-     * parsed hours instead of labeling them "closed" — a POI's blank day
-     * means extract_osm_pois.py couldn't confidently parse that day's OSM
-     * `opening_hours` clause, not that it's confirmed closed (see
+     * Groups Sun..Sat into contiguous same-hours ranges, e.g. "א׳-ה׳: 08:00-17:00; ו׳: 08:00-13:00" —
+     * silently skipping days with no parsed hours instead of labeling them
+     * "closed". Shared by both the POI and Rav-Kav station dialogs: a blank
+     * day means the source data (extract_osm_pois.py's OSM `opening_hours`
+     * parse, or the gtfs.mot.gov.il Rav-Kav feed) simply doesn't say, not
+     * that it's confirmed closed (see
      * [iam699030.gmail.movitop.util.isOpenNow]'s same null-means-unknown rule).
      */
     private fun formatKnownWeeklyHours(hoursByDay: List<String>): String {

@@ -284,7 +284,7 @@ class SearchLocationActivity : AppCompatActivity() {
     private fun locateCurrentPosition() {
         currentLocationProgress.visibility = View.VISIBLE
         lifecycleScope.launch {
-            val point = withTimeoutOrNull(10_000L) {
+            val point = withTimeoutOrNull(LocationTracker.ONE_SHOT_FIX_TIMEOUT_MS) {
                 LocationTracker(this@SearchLocationActivity).updates().firstOrNull()
             }
             currentLocationProgress.visibility = View.GONE
